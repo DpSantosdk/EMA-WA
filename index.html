@@ -147,7 +147,7 @@
         
         <div id="import-area">
             <h2>🟦 1. Importar Planilha (CSV ou XLSX)</h2>
-            <p>Selecione um arquivo do seu diretório.</p>
+            <p>Selecione um arquivo. **Primeira Coluna = Número**, **Segunda Coluna = Mensagem**.</p>
             <input type="file" id="file-input" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel">
             <p id="feedback-importacao" style="color: red; margin-top: 10px;"></p>
         </div>
@@ -166,6 +166,7 @@
         const btnEnviarProxima = document.getElementById('btn-enviar-proxima');
         const fileInput = document.getElementById('file-input');
         const feedbackImportacao = document.getElementById('feedback-importacao');
+        const loadingMessage = document.getElementById('loading-message');
 
         // ----------------------------------------------------------------------
         // FUNÇÕES DE LEITURA DE ARQUIVOS (CSV e XLSX)
@@ -177,10 +178,13 @@
          * @param {boolean} ignorarPrimeiraLinha - Se deve ignorar o cabeçalho (True para XLSX e CSV).
          */
         function processarDados(dados, ignorarPrimeiraLinha = true) {
+            loadingMessage.style.display = 'none'; // Esconde a mensagem de carregamento/aguardando
+
             if (dados.length === 0) {
                 feedbackImportacao.textContent = 'Erro: O arquivo está vazio.';
                 filaContainer.innerHTML = '';
                 btnEnviarProxima.disabled = true;
+                fileInput.value = ''; // CORREÇÃO: Reseta o input para permitir o re-upload do mesmo arquivo
                 return;
             }
             
@@ -201,14 +205,14 @@
                 }));
 
             if (filaMensagens.length === 0) {
-                feedbackImportacao.textContent = 'Erro: Nenhuma linha válida (com número e mensagem) encontrada após o cabeçalho.';
+                feedbackImportacao.textContent = 'Erro: Nenhuma linha válida (com número e mensagem nas colunas 1 e 2) encontrada.';
                 filaContainer.innerHTML = '';
                 btnEnviarProxima.disabled = true;
+                fileInput.value = ''; // CORREÇÃO: Reseta o input
                 return;
             }
 
             feedbackImportacao.textContent = `✅ ${filaMensagens.length} mensagens carregadas com sucesso!`;
-            document.getElementById('loading-message').style.display = 'none';
             renderizarFila();
         }
 
@@ -231,6 +235,7 @@
                 });
                 
                 processarDados(dataArray, true); // Ignora a primeira linha
+                fileInput.value = ''; // CORREÇÃO: Reseta o input após o processamento
             };
             reader.readAsText(file);
         }
@@ -253,6 +258,7 @@
                 const dataArray = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
                 
                 processarDados(dataArray, true); // Ignora a primeira linha
+                fileInput.value = ''; // CORREÇÃO: Reseta o input após o processamento
             };
             reader.readAsArrayBuffer(file);
         }
@@ -262,8 +268,9 @@
             const file = event.target.files[0];
             if (!file) return;
 
-            feedbackImportacao.textContent = 'Carregando...';
+            feedbackImportacao.textContent = 'Carregando... Por favor, aguarde.';
             filaMensagens = []; // Limpa a fila anterior
+            filaContainer.innerHTML = ''; // Limpa a visualização anterior
             
             // Verifica o tipo do arquivo
             if (file.name.endsWith('.csv')) {
@@ -272,6 +279,7 @@
                 lerXLSX(file);
             } else {
                 feedbackImportacao.textContent = 'Erro: Formato de arquivo não suportado. Use .csv, .xlsx ou .xls.';
+                fileInput.value = ''; // CORREÇÃO: Reseta o input
             }
         });
 
@@ -295,8 +303,7 @@
                     proximoDestaque.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 } else {
                     btnEnviarProxima.textContent = "✅ Campanha Concluída";
-                    // Adiciona a classe de concluído ao botão principal quando finaliza
-                    btnEnviarProxima.style.backgroundColor = '#1DA851'; 
+                    btnEnviarProxima.style.backgroundColor = '#1DA851'; // Cor de sucesso
                     alert('🎉 Fila de Envio Concluída! Você enviou todas as mensagens.');
                 }
             }
@@ -348,7 +355,7 @@
                 btnEnviarProxima.disabled = true;
                 btnEnviarProxima.textContent = "Carregue um arquivo para começar";
                 btnEnviarProxima.style.backgroundColor = 'var(--text-gray)';
-                document.getElementById('loading-message').style.display = 'block';
+                loadingMessage.style.display = 'block'; // Mostra a mensagem inicial de novo
             }
 
             // Cria os cartões
@@ -388,7 +395,7 @@
         // Inicia o sistema
         document.addEventListener('DOMContentLoaded', () => {
             if (filaMensagens.length === 0) {
-                document.getElementById('loading-message').style.display = 'block';
+                loadingMessage.style.display = 'block';
             }
         });
     </script>
