@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EMA-WA: Assistente de Envio Manual</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <style>
+        /* CSS Minimalista (Inspirado no WhatsApp Web) */
+        :root {
+            --primary-green: #075E54;
+            --secondary-green: #25D366;
+            --bg-light: #F0F2F5;
+            --bg-white: #FFFFFF;
+            --text-dark: #111B21;
+            --text-gray: #667781;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            background-color: var(--bg-light);
+            color: var(--text-dark);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 800px;
+            padding: 20px;
+        }
+
+        /* Área de Importação */
+        #import-area {
+            background-color: var(--bg-white);
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        input[type="file"] {
+            display: block;
+            margin-top: 10px;
+        }
+
+        /* Botão Principal de Ação */
+        #btn-enviar-proxima {
+            background-color: var(--primary-green);
+            color: white;
+            padding: 12px 25px;
+            font-size: 1.1em;
+            font-weight: 600;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        #btn-enviar-proxima:hover:not(:disabled) {
+            background-color: #054a3e;
+        }
+        #btn-enviar-proxima:disabled {
+            background-color: var(--text-gray);
+            cursor: not-allowed;
+        }
+
+        /* Fila de Mensagens */
+        #fila-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .cartao-mensagem {
+            background-color: var(--bg-white);
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        /* Destaque para o Próximo Item (Visual mais sutil) */
+        .cartao-mensagem.destaque {
+            border: 2px solid var(--secondary-green);
+            box-shadow: 0 0 10px rgba(37, 211, 102, 0.6);
+            order: -1; /* Mantém o destaque no topo */
+        }
+        
+        /* Item Enviado (Checklist) */
+        .cartao-mensagem.enviado {
+            background-color: #e9fbe9; /* Verde muito claro */
+            opacity: 0.7;
+        }
+        
+        .cartao-mensagem h4 {
+            margin: 0 0 5px 0;
+            font-size: 1em;
+            color: var(--primary-green);
+            display: inline-block;
+        }
+        .cartao-mensagem p {
+            margin: 5px 0 10px 0;
+            font-size: 0.9em;
+            color: var(--text-dark);
+            white-space: pre-wrap;
+        }
+        
+        /* Botão de Ação no Cartão */
+        .btn-individual {
+            background-color: var(--secondary-green);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            float: right;
+        }
+        .btn-individual:disabled {
+            background-color: var(--text-gray);
+            cursor: not-allowed;
+            float: right;
+        }
+        
+        .status-badge {
+            font-size: 0.7em;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .status-badge.pendente { background-color: #ffeccf; color: #b87c2b; }
+        .status-badge.enviado { background-color: #d1f4d9; color: var(--primary-green); }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>⭐ EMA-WA | Assistente de Envio</h1>
+        
+        <div id="import-area">
+            <h2>🟦 1. Importar Planilha (CSV ou XLSX)</h2>
+            <p>Selecione um arquivo do seu diretório.</p>
+            <input type="file" id="file-input" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel">
+            <p id="feedback-importacao" style="color: red; margin-top: 10px;"></p>
+        </div>
+
+        <button id="btn-enviar-proxima" disabled>Carregue um arquivo para começar</button>
+        
+        <div id="fila-container">
+            <p id="loading-message" style="text-align: center; color: var(--text-gray);">Aguardando a importação da planilha...</p>
+        </div>
+    </div>
+
+    <script>
+        // VARIÁVEIS GLOBAIS
+        let filaMensagens = [];
+        const filaContainer = document.getElementById('fila-container');
+        const btnEnviarProxima = document.getElementById('btn-enviar-proxima');
+        const fileInput = document.getElementById('file-input');
+        const feedbackImportacao = document.getElementById('feedback-importacao');
+
+        // ----------------------------------------------------------------------
+        // FUNÇÕES DE LEITURA DE ARQUIVOS (CSV e XLSX)
+        // ----------------------------------------------------------------------
+
+        /**
+         * @description Converte o array de dados crus para o formato de fila, assumindo a posição das colunas.
+         * @param {Array<Object>} dados - Dados brutos lidos.
+         * @param {boolean} ignorarPrimeiraLinha - Se deve ignorar o cabeçalho (True para XLSX e CSV).
+         */
+        function processarDados(dados, ignorarPrimeiraLinha = true) {
+            if (dados.length === 0) {
+                feedbackImportacao.textContent = 'Erro: O arquivo está vazio.';
+                filaContainer.innerHTML = '';
+                btnEnviarProxima.disabled = true;
+                return;
+            }
+            
+            // Se deve ignorar o cabeçalho, remove o primeiro elemento
+            const dadosReais = ignorarPrimeiraLinha ? dados.slice(1) : dados;
+
+            // Mapeia os dados, assumindo a posição: Índice 0 = Número, Índice 1 = Mensagem
+            filaMensagens = dadosReais
+                // Filtra para garantir que as duas primeiras colunas não estejam vazias
+                .filter(row => row[0] && row[1]) 
+                .map((row, index) => ({
+                    id: index + 1,
+                    // Limpa caracteres não numéricos do número (Índice 0)
+                    numero: String(row[0]).replace(/\D/g, ''), 
+                    // Mensagem (Índice 1)
+                    mensagem: String(row[1]), 
+                    status: 'Pendente'
+                }));
+
+            if (filaMensagens.length === 0) {
+                feedbackImportacao.textContent = 'Erro: Nenhuma linha válida (com número e mensagem) encontrada após o cabeçalho.';
+                filaContainer.innerHTML = '';
+                btnEnviarProxima.disabled = true;
+                return;
+            }
+
+            feedbackImportacao.textContent = `✅ ${filaMensagens.length} mensagens carregadas com sucesso!`;
+            document.getElementById('loading-message').style.display = 'none';
+            renderizarFila();
+        }
+
+        /**
+         * @description Lida com a leitura de arquivos CSV (JS Puro).
+         * @param {File} file - O arquivo CSV.
+         */
+        function lerCSV(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const text = e.target.result;
+                
+                const allRows = text.split('\n').filter(r => r.trim() !== '');
+                
+                // Conversão simples de CSV para Array de Arrays
+                const dataArray = allRows.map(row => {
+                    // Usa expressão regular para lidar com CSV que pode ter aspas
+                    const matches = row.match(/(".*?"|[^",]+)(?=\s*,\s*|\s*$)/g);
+                    return matches ? matches.map(m => m.replace(/(^"|"$)/g, '').trim()) : [];
+                });
+                
+                processarDados(dataArray, true); // Ignora a primeira linha
+            };
+            reader.readAsText(file);
+        }
+
+        /**
+         * @description Lida com a leitura de arquivos XLSX (SheetJS).
+         * @param {File} file - O arquivo XLSX.
+         */
+        function lerXLSX(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                
+                // Assume que a primeira planilha é a que contém os dados
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                
+                // Converte a planilha para Array de Arrays (sem nomes de cabeçalho)
+                const dataArray = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                
+                processarDados(dataArray, true); // Ignora a primeira linha
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // Listener para o input de arquivo
+        fileInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            feedbackImportacao.textContent = 'Carregando...';
+            filaMensagens = []; // Limpa a fila anterior
+            
+            // Verifica o tipo do arquivo
+            if (file.name.endsWith('.csv')) {
+                lerCSV(file);
+            } else if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+                lerXLSX(file);
+            } else {
+                feedbackImportacao.textContent = 'Erro: Formato de arquivo não suportado. Use .csv, .xlsx ou .xls.';
+            }
+        });
+
+        // ----------------------------------------------------------------------
+        // FUNÇÕES DE FLUXO (CORE)
+        // ----------------------------------------------------------------------
+
+        /**
+         * @description Atualiza o Status do Item e renderiza novamente a fila.
+         * @param {number} id - ID do item da fila.
+         */
+        function marcarComoEnviado(id) {
+            const item = filaMensagens.find(i => i.id === id);
+            if (item && item.status === 'Pendente') {
+                item.status = 'Enviado';
+                renderizarFila();
+                
+                // Rolagem para o próximo item destacado
+                const proximoDestaque = document.querySelector('.cartao-mensagem.destaque');
+                if (proximoDestaque) {
+                    proximoDestaque.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                } else {
+                    btnEnviarProxima.textContent = "✅ Campanha Concluída";
+                    // Adiciona a classe de concluído ao botão principal quando finaliza
+                    btnEnviarProxima.style.backgroundColor = '#1DA851'; 
+                    alert('🎉 Fila de Envio Concluída! Você enviou todas as mensagens.');
+                }
+            }
+        }
+
+        /**
+         * @description Constrói o URL do WhatsApp e abre uma nova aba.
+         * @param {number} id - ID do item da fila.
+         * @param {string} numero - Número do destinatário.
+         * @param {string} mensagem - Mensagem personalizada.
+         */
+        function enviarMensagem(id, numero, mensagem) {
+            const mensagemEncoded = encodeURIComponent(mensagem);
+            
+            // Formato de link do WhatsApp: wa.me/CODIGOPAISNUMERO?text=MENSAGEM
+            const url = `https://wa.me/${numero}?text=${mensagemEncoded}`;
+            
+            window.open(url, '_blank');
+            
+            // Marca como enviado após a ação do usuário no nosso sistema
+            marcarComoEnviado(id);
+        }
+
+        /**
+         * @description Renderiza a lista de cartões na interface.
+         */
+        function renderizarFila() {
+            // Identifica o próximo item Pendente
+            const proximoItem = filaMensagens.find(item => item.status === 'Pendente');
+            
+            filaContainer.innerHTML = '';
+            
+            // Configura o Botão Principal
+            if (proximoItem) {
+                btnEnviarProxima.disabled = false;
+                btnEnviarProxima.textContent = `➡ Enviar Próxima Mensagem (ID: ${proximoItem.id})`;
+                btnEnviarProxima.style.backgroundColor = '#075E54'; // Cor ativa
+                btnEnviarProxima.onclick = () => enviarMensagem(
+                    proximoItem.id, 
+                    proximoItem.numero, 
+                    proximoItem.mensagem
+                );
+            } else if (filaMensagens.length > 0) {
+                btnEnviarProxima.disabled = true;
+                btnEnviarProxima.textContent = "✅ Campanha Concluída";
+                btnEnviarProxima.style.backgroundColor = '#1DA851'; // Cor de sucesso
+            } else {
+                // Estado inicial
+                btnEnviarProxima.disabled = true;
+                btnEnviarProxima.textContent = "Carregue um arquivo para começar";
+                btnEnviarProxima.style.backgroundColor = 'var(--text-gray)';
+                document.getElementById('loading-message').style.display = 'block';
+            }
+
+            // Cria os cartões
+            filaMensagens.forEach(item => {
+                const isDestaque = proximoItem && item.id === proximoItem.id;
+                const isEnviado = item.status === 'Enviado';
+
+                const cartao = document.createElement('div');
+                cartao.className = `cartao-mensagem ${isDestaque ? 'destaque' : ''} ${isEnviado ? 'enviado' : ''}`;
+                cartao.id = `item-${item.id}`;
+
+                const badgeClass = isEnviado ? 'enviado' : 'pendente';
+                const badgeText = isEnviado ? 'ENVIADO' : 'PENDENTE';
+                
+                const numeroFormatado = item.numero; // Exibe o número limpo
+
+                // Conteúdo HTML do cartão
+                cartao.innerHTML = `
+                    <button class="btn-individual" data-id="${item.id}" ${isEnviado ? 'disabled' : ''}>
+                        ${isEnviado ? 'Concluído' : 'Abrir WhatsApp'}
+                    </button>
+                    <h4>[${item.id}] Destinatário: ${numeroFormatado}</h4>
+                    <span class="status-badge ${badgeClass}">${badgeText}</span>
+                    <p>Mensagem: ${item.mensagem}</p>
+                `;
+
+                // Adiciona o evento de clique ao botão individual
+                const btn = cartao.querySelector('.btn-individual');
+                if (!isEnviado) {
+                    btn.onclick = () => enviarMensagem(item.id, item.numero, item.mensagem);
+                }
+
+                filaContainer.appendChild(cartao);
+            });
+        }
+
+        // Inicia o sistema
+        document.addEventListener('DOMContentLoaded', () => {
+            if (filaMensagens.length === 0) {
+                document.getElementById('loading-message').style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html>
