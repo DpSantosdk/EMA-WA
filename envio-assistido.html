@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EMA-WA: Assistente de Envio</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#075E54">
+    <link rel="icon" type="image/png" href="icon-192x192.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <link rel="apple-touch-icon" href="icon-192x192.png">
+    
+    <style>
+        /* CSS GERAL E VARIÁVEIS */
+        :root {
+            --primary-green: #075E54;
+            --secondary-green: #25D366;
+            --bg-light: #F0F2F5;
+            --bg-white: #FFFFFF;
+            --text-dark: #111B21;
+            --text-gray: #667781;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            background-color: var(--bg-light);
+            color: var(--text-dark);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .container {
+            width: 90%;
+            max-width: 800px;
+            padding: 20px;
+        }
+
+        /* HEADER E BOTÃO VOLTAR */
+        .header-app {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .header-app h1 {
+            margin: 0;
+            font-size: 1.8em;
+            color: var(--primary-green);
+        }
+        .btn-voltar {
+            background: none;
+            border: none;
+            font-size: 2em;
+            color: var(--text-gray);
+            cursor: pointer;
+            padding: 5px;
+            line-height: 1;
+            text-decoration: none; /* Para usar como link */
+        }
+        .btn-voltar:hover {
+            color: var(--text-dark);
+        }
+        
+        /* ESTILOS DA LÓGICA DE FILA (MANTIDOS) */
+        #import-area {
+            background-color: var(--bg-white);
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        input[type="file"], select {
+            display: block;
+            margin-top: 10px;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        
+        #select-colunas {
+            margin-bottom: 15px;
+            padding: 10px;
+            background-color: #f7f7f7;
+            border-left: 5px solid var(--primary-green);
+        }
+        
+        #btn-enviar-proxima {
+            background-color: var(--primary-green);
+            color: white;
+            padding: 12px 25px;
+            font-size: 1.1em;
+            font-weight: 600;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        #btn-enviar-proxima:hover:not(:disabled) {
+            background-color: #054a3e;
+        }
+        #btn-enviar-proxima:disabled {
+            background-color: var(--text-gray);
+            cursor: not-allowed;
+        }
+
+        #fila-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .cartao-mensagem {
+            background-color: var(--bg-white);
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+            position: relative;
+        }
+        
+        .cartao-mensagem.destaque {
+            border: 2px solid var(--secondary-green);
+            box-shadow: 0 0 10px rgba(37, 211, 102, 0.6);
+            order: -1;
+        }
+        
+        .cartao-mensagem.enviado {
+            background-color: #e9fbe9;
+            opacity: 0.7;
+        }
+        
+        .cartao-mensagem h4 {
+            margin: 0 0 5px 0;
+            font-size: 1em;
+            color: var(--primary-green);
+            display: inline-block;
+        }
+        .cartao-mensagem p {
+            margin: 5px 0 10px 0;
+            font-size: 0.9em;
+            color: var(--text-dark);
+            white-space: pre-wrap;
+        }
+        
+        .btn-individual {
+            background-color: var(--secondary-green);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+            float: right;
+        }
+        .btn-individual:disabled {
+            background-color: var(--text-gray);
+            cursor: not-allowed;
+            float: right;
+        }
+        
+        .status-badge {
+            font-size: 0.7em;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-weight: bold;
+            margin-left: 10px;
+        }
+        .status-badge.pendente { background-color: #ffeccf; color: #b87c2b; }
+        .status-badge.enviado { background-color: #d1f4d9; color: var(--primary-green); }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        
+        <div class="header-app">
+            <a href="index.html" class="btn-voltar" title="Voltar para o Início">&#x2190;</a> 
+            <h1>Assistente de Envio</h1>
+        </div>
+
+        <div id="import-area">
+            <h2>Importar Planilha</h2>
+            
+            <div id="select-colunas">
+                <label for="coluna-modo">Configuração de Colunas:</label>
+                <select id="coluna-modo">
+                    <option value="2">Modo 2 Colunas: NÚMERO (Col. 1) e MENSAGEM (Col. 2)</option>
+                    <option value="3">Modo 3 Colunas: NÚMERO (Col. 1) e MENSAGEM (Col. 3)</option>
+                </select>
+                <p style="font-size: 0.85em; color: var(--text-gray); margin-top: 5px;">A Col. 1 é sempre o Número.</p>
+            </div>
+
+            <p>Selecione o arquivo e clique em "Carregar".</p>
+            <input type="file" id="file-input" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel">
+            <p id="feedback-importacao" style="color: red; margin-top: 10px;"></p>
+        </div>
+
+        <button id="btn-enviar-proxima" disabled>Carregue um arquivo para começar</button>
+        
+        <div id="fila-container">
+            <p id="loading-message" style="text-align: center; color: var(--text-gray);">Aguardando a importação da planilha...</p>
+        </div>
+    </div>
+
+    <script>
+        // VARIÁVEIS GLOBAIS
+        let filaMensagens = [];
+        const filaContainer = document.getElementById('fila-container');
+        const btnEnviarProxima = document.getElementById('btn-enviar-proxima');
+        const fileInput = document.getElementById('file-input');
+        const feedbackImportacao = document.getElementById('feedback-importacao');
+        const loadingMessage = document.getElementById('loading-message');
+        const colunaModoSelect = document.getElementById('coluna-modo');
+        
+        // ----------------------------------------------------------------------
+        // FUNÇÕES DE LEITURA DE ARQUIVOS
+        // ----------------------------------------------------------------------
+
+        function processarDados(dados, ignorarPrimeiraLinha = true) {
+            loadingMessage.style.display = 'none';
+
+            if (dados.length === 0) {
+                feedbackImportacao.textContent = 'Erro: O arquivo está vazio.';
+                filaContainer.innerHTML = '';
+                btnEnviarProxima.disabled = true;
+                fileInput.value = '';
+                return;
+            }
+            
+            const modo = parseInt(colunaModoSelect.value);
+            let indiceMensagem;
+            let modoDescricao;
+
+            if (modo === 2) {
+                indiceMensagem = 1;
+                modoDescricao = 'Modo 2 Colunas (Col. 1 e Col. 2)';
+            } else if (modo === 3) {
+                indiceMensagem = 2;
+                modoDescricao = 'Modo 3 Colunas (Col. 1 e Col. 3)';
+            } else {
+                feedbackImportacao.textContent = 'Erro: Modo de coluna inválido selecionado.';
+                fileInput.value = '';
+                return;
+            }
+
+            const dadosReais = ignorarPrimeiraLinha ? dados.slice(1) : dados;
+
+            filaMensagens = dadosReais
+                .filter(row => row[0] && row[indiceMensagem]) 
+                .map((row, index) => ({
+                    id: index + 1,
+                    numero: String(row[0]).replace(/\D/g, ''), 
+                    mensagem: String(row[indiceMensagem]), 
+                    status: 'Pendente'
+                }));
+
+            if (filaMensagens.length === 0) {
+                feedbackImportacao.textContent = `Erro (${modoDescricao}): Nenhuma linha válida encontrada. Verifique se as colunas 1 e ${indiceMensagem + 1} contêm dados.`;
+                filaContainer.innerHTML = '';
+                btnEnviarProxima.disabled = true;
+                fileInput.value = '';
+                return;
+            }
+
+            feedbackImportacao.textContent = `✅ ${filaMensagens.length} mensagens carregadas com sucesso! (${modoDescricao})`;
+            renderizarFila();
+        }
+
+        function lerCSV(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const text = e.target.result;
+                const allRows = text.split('\n').filter(r => r.trim() !== '');
+                
+                const dataArray = allRows.map(row => {
+                    const matches = row.match(/(".*?"|[^",]+)(?=\s*,\s*|\s*$)/g);
+                    return matches ? matches.map(m => m.replace(/(^"|"$)/g, '').trim()) : [];
+                });
+                
+                processarDados(dataArray, true);
+                fileInput.value = '';
+            };
+            reader.readAsText(file);
+        }
+
+        function lerXLSX(file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const data = new Uint8Array(e.target.result);
+                const workbook = XLSX.read(data, { type: 'array' });
+                const sheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[sheetName];
+                
+                const dataArray = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                
+                processarDados(dataArray, true);
+                fileInput.value = '';
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        // Listener para o input de arquivo
+        fileInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            feedbackImportacao.textContent = 'Carregando... Por favor, aguarde.';
+            filaMensagens = [];
+            filaContainer.innerHTML = '';
+            
+            if (file.name.endsWith('.csv')) {
+                lerCSV(file);
+            } else if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
+                lerXLSX(file);
+            } else {
+                feedbackImportacao.textContent = 'Erro: Formato de arquivo não suportado. Use .csv, .xlsx ou .xls.';
+                fileInput.value = '';
+            }
+        });
+
+        // ----------------------------------------------------------------------
+        // FUNÇÕES DE FLUXO (CORE)
+        // ----------------------------------------------------------------------
+
+        function marcarComoEnviado(id) {
+            const item = filaMensagens.find(i => i.id === id);
+            if (item && item.status === 'Pendente') {
+                item.status = 'Enviado';
+                renderizarFila();
+                
+                const proximoDestaque = document.querySelector('.cartao-mensagem.destaque');
+                if (proximoDestaque) {
+                    proximoDestaque.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                } else {
+                    btnEnviarProxima.textContent = "✅ Campanha Concluída";
+                    btnEnviarProxima.style.backgroundColor = '#1DA851';
+                    alert('🎉 Fila de Envio Concluída! Você enviou todas as mensagens.');
+                }
+            }
+        }
+
+        function enviarMensagem(id, numero, mensagem) {
+            const mensagemEncoded = encodeURIComponent(mensagem);
+            const url = `https://wa.me/${numero}?text=${mensagemEncoded}`;
+            
+            window.open(url, '_blank');
+            marcarComoEnviado(id);
+        }
+
+        function renderizarFila() {
+            const proximoItem = filaMensagens.find(item => item.status === 'Pendente');
+            
+            filaContainer.innerHTML = '';
+            
+            // Configura o Botão Principal
+            if (proximoItem) {
+                btnEnviarProxima.disabled = false;
+                btnEnviarProxima.textContent = `➡ Enviar Próxima Mensagem (ID: ${proximoItem.id})`;
+                btnEnviarProxima.style.backgroundColor = '#075E54';
+                btnEnviarProxima.onclick = () => enviarMensagem(
+                    proximoItem.id, 
+                    proximoItem.numero, 
+                    proximoItem.mensagem
+                );
+            } else if (filaMensagens.length > 0) {
+                btnEnviarProxima.disabled = true;
+                btnEnviarProxima.textContent = "✅ Campanha Concluída";
+                btnEnviarProxima.style.backgroundColor = '#1DA851';
+            } else {
+                btnEnviarProxima.disabled = true;
+                btnEnviarProxima.textContent = "Carregue um arquivo para começar";
+                btnEnviarProxima.style.backgroundColor = 'var(--text-gray)';
+                loadingMessage.style.display = 'block';
+            }
+
+            // Cria os cartões
+            filaMensagens.forEach(item => {
+                const isDestaque = proximoItem && item.id === proximoItem.id;
+                const isEnviado = item.status === 'Enviado';
+
+                const cartao = document.createElement('div');
+                cartao.className = `cartao-mensagem ${isDestaque ? 'destaque' : ''} ${isEnviado ? 'enviado' : ''}`;
+                cartao.id = `item-${item.id}`;
+
+                const badgeClass = isEnviado ? 'enviado' : 'pendente';
+                const badgeText = isEnviado ? 'ENVIADO' : 'PENDENTE';
+                
+                const numeroFormatado = item.numero;
+
+                cartao.innerHTML = `
+                    <button class="btn-individual" data-id="${item.id}" ${isEnviado ? 'disabled' : ''}>
+                        ${isEnviado ? 'Concluído' : 'Abrir WhatsApp'}
+                    </button>
+                    <h4>[${item.id}] Destinatário: ${numeroFormatado}</h4>
+                    <span class="status-badge ${badgeClass}">${badgeText}</span>
+                    <p>Mensagem: ${item.mensagem}</p>
+                `;
+
+                const btn = cartao.querySelector('.btn-individual');
+                if (!isEnviado) {
+                    btn.onclick = () => enviarMensagem(item.id, item.numero, item.mensagem);
+                }
+
+                filaContainer.appendChild(cartao);
+            });
+        }
+
+        // Inicia o sistema
+        document.addEventListener('DOMContentLoaded', () => {
+             // Garante que a mensagem de loading/aguardando seja exibida no início
+             if (filaMensagens.length === 0) {
+                loadingMessage.style.display = 'block';
+             }
+        });
+    </script>
+</body>
+</html>

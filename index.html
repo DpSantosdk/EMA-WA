@@ -3,8 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EMA-WA: Assistente de Envio Manual</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <title>EMA-WA: Início</title>
     
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#075E54">
@@ -14,7 +13,7 @@
     <link rel="apple-touch-icon" href="icon-192x192.png">
     
     <style>
-        /* CSS Minimalista (Inspirado no WhatsApp Web) */
+        /* CSS GERAL E VARIÁVEIS */
         :root {
             --primary-green: #075E54;
             --secondary-green: #25D366;
@@ -39,406 +38,78 @@
             width: 90%;
             max-width: 800px;
             padding: 20px;
+            text-align: center;
         }
 
-        /* Área de Importação */
-        #import-area {
-            background-color: var(--bg-white);
-            border-radius: 8px;
-            padding: 20px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            margin-bottom: 20px;
+        /* ESTILOS DA TELA INICIAL */
+        .home-logo {
+            /* ESTILO REMOVIDO */
+            /* font-size: 3em; */
+            /* color: var(--primary-green); */
+            /* font-weight: 700; */
+            margin-bottom: 5px;
+            margin-top: 50px;
+            display: block; /* Garante que a imagem se comporte como bloco para centralizar */
         }
 
-        input[type="file"], select {
-            display: block;
-            margin-top: 10px;
-            padding: 8px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            width: 100%;
-            box-sizing: border-box;
+        /* NOVO ESTILO PARA A IMAGEM DO LOGO */
+        .img-logo {
+            width: 80px; /* Tamanho do ícone */
+            height: 80px;
+            border-radius: 15px; /* Bordas arredondadas */
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Sombra suave opcional */
         }
         
-        #select-colunas {
-            margin-bottom: 15px;
-            padding: 10px;
-            background-color: #f7f7f7;
-            border-left: 5px solid var(--primary-green);
-        }
-        
-        /* Botão Principal de Ação */
-        #btn-enviar-proxima {
+        .home-btn {
+            /* Usamos a tag <a> com o estilo de botão */
+            display: block; 
             background-color: var(--primary-green);
             color: white;
-            padding: 12px 25px;
-            font-size: 1.1em;
+            padding: 15px 30px;
+            font-size: 1.2em;
             font-weight: 600;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: background-color 0.2s;
-            width: 100%;
-            margin-bottom: 20px;
-        }
-        #btn-enviar-proxima:hover:not(:disabled) {
-            background-color: #054a3e;
-        }
-        #btn-enviar-proxima:disabled {
-            background-color: var(--text-gray);
-            cursor: not-allowed;
-        }
-
-        /* Fila de Mensagens */
-        #fila-container {
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-        }
-        
-        .cartao-mensagem {
-            background-color: var(--bg-white);
             border-radius: 8px;
-            padding: 15px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            transition: all 0.3s ease;
-            position: relative;
+            transition: background-color 0.2s, transform 0.1s;
+            width: 80%;
+            max-width: 400px;
+            margin: 20px auto; /* Centraliza */
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            text-decoration: none; /* Remove o sublinhado do link */
         }
-        
-        /* Destaque para o Próximo Item (Visual mais sutil) */
-        .cartao-mensagem.destaque {
-            border: 2px solid var(--secondary-green);
-            box-shadow: 0 0 10px rgba(37, 211, 102, 0.6);
-            order: -1; /* Mantém o destaque no topo */
+        .home-btn:hover {
+            background-color: #054a3e;
+            transform: translateY(-2px);
         }
-        
-        /* Item Enviado (Checklist) */
-        .cartao-mensagem.enviado {
-            background-color: #e9fbe9; /* Verde muito claro */
-            opacity: 0.7;
-        }
-        
-        .cartao-mensagem h4 {
-            margin: 0 0 5px 0;
-            font-size: 1em;
-            color: var(--primary-green);
-            display: inline-block;
-        }
-        .cartao-mensagem p {
-            margin: 5px 0 10px 0;
-            font-size: 0.9em;
-            color: var(--text-dark);
-            white-space: pre-wrap;
-        }
-        
-        /* Botão de Ação no Cartão */
-        .btn-individual {
-            background-color: var(--secondary-green);
-            color: white;
-            border: none;
-            padding: 8px 12px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-weight: 500;
-            float: right;
-        }
-        .btn-individual:disabled {
+        .home-btn-disparo {
             background-color: var(--text-gray);
-            cursor: not-allowed;
-            float: right;
+            cursor: default; /* Não há link para onde ir */
+            pointer-events: none; /* Impede o clique em links inativos */
         }
-        
-        .status-badge {
-            font-size: 0.7em;
-            padding: 3px 8px;
-            border-radius: 12px;
-            font-weight: bold;
-            margin-left: 10px;
+        .home-btn-disparo:hover {
+            background-color: var(--text-gray);
+            transform: none;
         }
-        .status-badge.pendente { background-color: #ffeccf; color: #b87c2b; }
-        .status-badge.enviado { background-color: #d1f4d9; color: var(--primary-green); }
     </style>
 </head>
 <body>
 
     <div class="container">
-        <h1>EMA-WA | Assistente de Envio</h1>
-        
-        <div id="import-area">
-            <h2>Importar Planilha (CSV ou XLSX)</h2>
-            
-            <div id="select-colunas">
-                <label for="coluna-modo">Configuração de Colunas:</label>
-                <select id="coluna-modo">
-                    <option value="2">Modo 2 Colunas: NÚMERO (Col. 1) e MENSAGEM (Col. 2)</option>
-                    <option value="3">Modo 3 Colunas: NÚMERO (Col. 1) e MENSAGEM (Col. 3)</option>
-                </select>
-                <p style="font-size: 0.85em; color: var(--text-gray); margin-top: 5px;">A primeira coluna (Col. 1) é sempre o Número.</p>
-            </div>
-
-            <p>Selecione o arquivo e clique em "Carregar".</p>
-            <input type="file" id="file-input" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel">
-            <p id="feedback-importacao" style="color: red; margin-top: 10px;"></p>
+        <div class="home-logo">
+            <img src="icon-192x192.png" alt="Logo EMA-WA" class="img-logo">
         </div>
-
-        <button id="btn-enviar-proxima" disabled>Carregue um arquivo para começar</button>
+        <h1>Bem-vindo ao EMA-WA</h1>
+        <p style="color: var(--text-gray); margin-bottom: 40px;">Selecione o modo de operação desejado.</p>
         
-        <div id="fila-container">
-            <p id="loading-message" style="text-align: center; color: var(--text-gray);">Aguardando a importação da planilha...</p>
-        </div>
+        <a href="envio-assistido.html" class="home-btn">
+            Assistente de Envio Manual
+            <br><span style="font-size: 0.7em; opacity: 0.8;">(Importar lista e enviar um a um)</span>
+        </a>
+        
+        <a href="gerador-disparo.html" class="home-btn" style="background-color: #0d9488;">
+            Gerador de Planilha de Disparo
+            <br><span style="font-size: 0.7em; opacity: 0.8;">(Cria a lista de envio a partir de outra planilha)</span>
+        </a>
     </div>
 
-    <script>
-        // VARIÁVEIS GLOBAIS
-        let filaMensagens = [];
-        const filaContainer = document.getElementById('fila-container');
-        const btnEnviarProxima = document.getElementById('btn-enviar-proxima');
-        const fileInput = document.getElementById('file-input');
-        const feedbackImportacao = document.getElementById('feedback-importacao');
-        const loadingMessage = document.getElementById('loading-message');
-        
-        // NOVO ELEMENTO: Seletor de modo de coluna
-        const colunaModoSelect = document.getElementById('coluna-modo');
-
-        // ----------------------------------------------------------------------
-        // FUNÇÕES DE LEITURA DE ARQUIVOS (CSV e XLSX)
-        // ----------------------------------------------------------------------
-
-        /**
-         * @description Converte o array de dados crus para o formato de fila, assumindo a posição das colunas.
-         * @param {Array<Object>} dados - Dados brutos lidos.
-         * @param {boolean} ignorarPrimeiraLinha - Se deve ignorar o cabeçalho (True para XLSX e CSV).
-         */
-        function processarDados(dados, ignorarPrimeiraLinha = true) {
-            loadingMessage.style.display = 'none'; // Esconde a mensagem de carregamento/aguardando
-
-            if (dados.length === 0) {
-                feedbackImportacao.textContent = 'Erro: O arquivo está vazio.';
-                filaContainer.innerHTML = '';
-                btnEnviarProxima.disabled = true;
-                fileInput.value = '';
-                return;
-            }
-            
-            // Determina qual índice de coluna será usado para a mensagem (0-based)
-            const modo = parseInt(colunaModoSelect.value);
-            let indiceMensagem;
-            let modoDescricao;
-
-            if (modo === 2) {
-                // Modo 2 Colunas: Número (0), Mensagem (1)
-                indiceMensagem = 1;
-                modoDescricao = 'Modo 2 Colunas (Col. 1 e Col. 2)';
-            } else if (modo === 3) {
-                // Modo 3 Colunas: Número (0), Mensagem (2)
-                indiceMensagem = 2;
-                modoDescricao = 'Modo 3 Colunas (Col. 1 e Col. 3)';
-            } else {
-                // Fallback ou erro
-                feedbackImportacao.textContent = 'Erro: Modo de coluna inválido selecionado.';
-                fileInput.value = '';
-                return;
-            }
-
-            // A primeira linha (cabeçalho) é sempre ignorada
-            const dadosReais = ignorarPrimeiraLinha ? dados.slice(1) : dados;
-
-            // Mapeia os dados: Índice 0 = Número, Índice dinâmico = Mensagem
-            filaMensagens = dadosReais
-                // Filtra para garantir que as colunas necessárias não estejam vazias
-                .filter(row => row[0] && row[indiceMensagem]) 
-                .map((row, index) => ({
-                    id: index + 1,
-                    // Limpa caracteres não numéricos do número (Índice 0)
-                    numero: String(row[0]).replace(/\D/g, ''), 
-                    // Mensagem (Índice dinâmico: 1 ou 2)
-                    mensagem: String(row[indiceMensagem]), 
-                    status: 'Pendente'
-                }));
-
-            if (filaMensagens.length === 0) {
-                feedbackImportacao.textContent = `Erro (${modoDescricao}): Nenhuma linha válida encontrada. Verifique se as colunas 1 e ${indiceMensagem + 1} contêm dados.`;
-                filaContainer.innerHTML = '';
-                btnEnviarProxima.disabled = true;
-                fileInput.value = '';
-                return;
-            }
-
-            feedbackImportacao.textContent = `✅ ${filaMensagens.length} mensagens carregadas com sucesso! (${modoDescricao})`;
-            renderizarFila();
-        }
-
-        /**
-         * @description Lida com a leitura de arquivos CSV (JS Puro).
-         * @param {File} file - O arquivo CSV.
-         */
-        function lerCSV(file) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const text = e.target.result;
-                const allRows = text.split('\n').filter(r => r.trim() !== '');
-                
-                const dataArray = allRows.map(row => {
-                    // Expressão regular para lidar com CSV, incluindo aspas
-                    const matches = row.match(/(".*?"|[^",]+)(?=\s*,\s*|\s*$)/g);
-                    return matches ? matches.map(m => m.replace(/(^"|"$)/g, '').trim()) : [];
-                });
-                
-                processarDados(dataArray, true);
-                fileInput.value = ''; // Reseta o input
-            };
-            reader.readAsText(file);
-        }
-
-        /**
-         * @description Lida com a leitura de arquivos XLSX (SheetJS).
-         * @param {File} file - O arquivo XLSX.
-         */
-        function lerXLSX(file) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, { type: 'array' });
-                const sheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[sheetName];
-                
-                // Converte a planilha para Array de Arrays (sem nomes de cabeçalho)
-                const dataArray = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-                
-                processarDados(dataArray, true);
-                fileInput.value = ''; // Reseta o input
-            };
-            reader.readAsArrayBuffer(file);
-        }
-
-        // Listener para o input de arquivo
-        fileInput.addEventListener('change', (event) => {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            feedbackImportacao.textContent = 'Carregando... Por favor, aguarde.';
-            filaMensagens = [];
-            filaContainer.innerHTML = '';
-            
-            if (file.name.endsWith('.csv')) {
-                lerCSV(file);
-            } else if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
-                lerXLSX(file);
-            } else {
-                feedbackImportacao.textContent = 'Erro: Formato de arquivo não suportado. Use .csv, .xlsx ou .xls.';
-                fileInput.value = '';
-            }
-        });
-
-        // ----------------------------------------------------------------------
-        // FUNÇÕES DE FLUXO (CORE)
-        // ----------------------------------------------------------------------
-
-        /**
-         * @description Atualiza o Status do Item e renderiza novamente a fila.
-         * @param {number} id - ID do item da fila.
-         */
-        function marcarComoEnviado(id) {
-            const item = filaMensagens.find(i => i.id === id);
-            if (item && item.status === 'Pendente') {
-                item.status = 'Enviado';
-                renderizarFila();
-                
-                const proximoDestaque = document.querySelector('.cartao-mensagem.destaque');
-                if (proximoDestaque) {
-                    proximoDestaque.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                } else {
-                    btnEnviarProxima.textContent = "✅ Campanha Concluída";
-                    btnEnviarProxima.style.backgroundColor = '#1DA851';
-                    alert('🎉 Fila de Envio Concluída! Você enviou todas as mensagens.');
-                }
-            }
-        }
-
-        /**
-         * @description Constrói o URL do WhatsApp e abre uma nova aba.
-         * @param {number} id - ID do item da fila.
-         * @param {string} numero - Número do destinatário.
-         * @param {string} mensagem - Mensagem personalizada.
-         */
-        function enviarMensagem(id, numero, mensagem) {
-            const mensagemEncoded = encodeURIComponent(mensagem);
-            const url = `https://wa.me/${numero}?text=${mensagemEncoded}`;
-            
-            window.open(url, '_blank');
-            marcarComoEnviado(id);
-        }
-
-        /**
-         * @description Renderiza a lista de cartões na interface.
-         */
-        function renderizarFila() {
-            const proximoItem = filaMensagens.find(item => item.status === 'Pendente');
-            
-            filaContainer.innerHTML = '';
-            
-            // Configura o Botão Principal
-            if (proximoItem) {
-                btnEnviarProxima.disabled = false;
-                btnEnviarProxima.textContent = `➡ Enviar Próxima Mensagem (ID: ${proximoItem.id})`;
-                btnEnviarProxima.style.backgroundColor = '#075E54';
-                btnEnviarProxima.onclick = () => enviarMensagem(
-                    proximoItem.id, 
-                    proximoItem.numero, 
-                    proximoItem.mensagem
-                );
-            } else if (filaMensagens.length > 0) {
-                btnEnviarProxima.disabled = true;
-                btnEnviarProxima.textContent = "✅ Campanha Concluída";
-                btnEnviarProxima.style.backgroundColor = '#1DA851';
-            } else {
-                // Estado inicial
-                btnEnviarProxima.disabled = true;
-                btnEnviarProxima.textContent = "Carregue um arquivo para começar";
-                btnEnviarProxima.style.backgroundColor = 'var(--text-gray)';
-                loadingMessage.style.display = 'block';
-            }
-
-            // Cria os cartões
-            filaMensagens.forEach(item => {
-                const isDestaque = proximoItem && item.id === proximoItem.id;
-                const isEnviado = item.status === 'Enviado';
-
-                const cartao = document.createElement('div');
-                cartao.className = `cartao-mensagem ${isDestaque ? 'destaque' : ''} ${isEnviado ? 'enviado' : ''}`;
-                cartao.id = `item-${item.id}`;
-
-                const badgeClass = isEnviado ? 'enviado' : 'pendente';
-                const badgeText = isEnviado ? 'ENVIADO' : 'PENDENTE';
-                
-                const numeroFormatado = item.numero;
-
-                // Conteúdo HTML do cartão
-                cartao.innerHTML = `
-                    <button class="btn-individual" data-id="${item.id}" ${isEnviado ? 'disabled' : ''}>
-                        ${isEnviado ? 'Concluído' : 'Abrir WhatsApp'}
-                    </button>
-                    <h4>[${item.id}] Destinatário: ${numeroFormatado}</h4>
-                    <span class="status-badge ${badgeClass}">${badgeText}</span>
-                    <p>Mensagem: ${item.mensagem}</p>
-                `;
-
-                // Adiciona o evento de clique ao botão individual
-                const btn = cartao.querySelector('.btn-individual');
-                if (!isEnviado) {
-                    btn.onclick = () => enviarMensagem(item.id, item.numero, item.mensagem);
-                }
-
-                filaContainer.appendChild(cartao);
-            });
-        }
-
-        // Inicia o sistema
-        document.addEventListener('DOMContentLoaded', () => {
-            if (filaMensagens.length === 0) {
-                loadingMessage.style.display = 'block';
-            }
-        });
-    </script>
 </body>
 </html>
