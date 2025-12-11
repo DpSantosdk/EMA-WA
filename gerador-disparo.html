@@ -3,15 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EMA-WA: Gerador de Planilha</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <title>EMA-WA: Início</title>
     
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#075E54">
     <link rel="icon" type="image/png" href="icon-192x192.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <link rel="apple-touch-icon" href="icon-192x192.png">
     
     <style>
-        /* CSS GERAL E VARIÁVEIS (REPETIÇÃO NECESSÁRIA PARA ARQUIVOS SEPARADOS) */
+        /* CSS GERAL E VARIÁVEIS */
         :root {
             --primary-green: #075E54;
             --secondary-green: #25D366;
@@ -36,615 +38,78 @@
             width: 90%;
             max-width: 800px;
             padding: 20px;
+            text-align: center;
         }
 
-        /* HEADER E BOTÃO VOLTAR */
-        .header-app {
-            display: flex;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-        .header-app h1 {
-            margin: 0 0 0 15px;
-            font-size: 1.8em;
-            color: var(--primary-green);
-        }
-        .btn-voltar {
-            background: none;
-            border: none;
-            font-size: 2em;
-            color: var(--text-gray);
-            cursor: pointer;
-            padding: 5px;
-            line-height: 1;
-            text-decoration: none;
-        }
-        .btn-voltar:hover {
-            color: var(--text-dark);
-        }
-        
-        /* ÁREAS PRINCIPAIS */
-        #import-area, #mapping-area, #result-area {
-            background-color: var(--bg-white);
-            border-radius: 8px;
-            padding: 20px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            margin-bottom: 20px;
+        /* ESTILOS DA TELA INICIAL */
+        .home-logo {
+            /* ESTILO REMOVIDO */
+            /* font-size: 3em; */
+            /* color: var(--primary-green); */
+            /* font-weight: 700; */
+            margin-bottom: 5px;
+            margin-top: 50px;
+            display: block; /* Garante que a imagem se comporte como bloco para centralizar */
         }
 
-        /* Mapeamento de Colunas */
-        .campo-map {
-            display: flex;
-            align-items: center;
-            margin-bottom: 10px;
-        }
-        .campo-map label {
-            width: 150px;
-            font-weight: 600;
-        }
-        .campo-map select {
-            flex-grow: 1;
-            padding: 8px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
+        /* NOVO ESTILO PARA A IMAGEM DO LOGO */
+        .img-logo {
+            width: 80px; /* Tamanho do ícone */
+            height: 80px;
+            border-radius: 15px; /* Bordas arredondadas */
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Sombra suave opcional */
         }
         
-        /* BOTÃO DE AÇÃO */
-        #btn-gerar-planilha {
+        .home-btn {
+            /* Usamos a tag <a> com o estilo de botão */
+            display: block; 
             background-color: var(--primary-green);
             color: white;
-            padding: 12px 25px;
-            font-size: 1.1em;
+            padding: 15px 30px;
+            font-size: 1.2em;
             font-weight: 600;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: background-color 0.2s;
-            width: 100%;
+            border-radius: 8px;
+            transition: background-color 0.2s, transform 0.1s;
+            width: 80%;
+            max-width: 400px;
+            margin: 20px auto; /* Centraliza */
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            text-decoration: none; /* Remove o sublinhado do link */
         }
-        #btn-gerar-planilha:hover:not(:disabled) {
-            background-color: #0d9488;
+        .home-btn:hover {
+            background-color: #054a3e;
+            transform: translateY(-2px);
         }
-        #btn-gerar-planilha:disabled {
+        .home-btn-disparo {
             background-color: var(--text-gray);
-            cursor: not-allowed;
+            cursor: default; /* Não há link para onde ir */
+            pointer-events: none; /* Impede o clique em links inativos */
         }
-        
-        .coluna-dica {
-            font-size: 0.8em;
-            color: var(--text-gray);
-            margin-top: 5px;
-        }
-        #template-preview {
-            white-space: pre-wrap;
-            background-color: #f7f7f7;
-            padding: 15px;
-            border-radius: 4px;
-            border: 1px solid #eee;
-            margin-top: 15px;
-            font-size: 0.9em;
+        .home-btn-disparo:hover {
+            background-color: var(--text-gray);
+            transform: none;
         }
     </style>
 </head>
 <body>
 
     <div class="container">
+        <div class="home-logo">
+            <img src="icon-192x192.png" alt="Logo EMA-WA" class="img-logo">
+        </div>
+        <h1>Bem-vindo ao EMA-WA</h1>
+        <p style="color: var(--text-gray); margin-bottom: 40px;">Selecione o modo de operação desejado.</p>
         
-        <div class="header-app">
-            <a href="index.html" class="btn-voltar" title="Voltar para o Início">&#x2190;</a> 
-            <h1>Gerador de Planilha de Disparo</h1>
-        </div>
-
-        <div id="import-area">
-            <h2>Passo 1: Importar Dados de Origem</h2>
-            <p>Carregue a planilha que contém os dados das consultas (Nome, Telefone, Data, etc.).</p>
-            <input type="file" id="file-input" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel">
-            <p id="feedback-importacao" class="coluna-dica" style="color: red;"></p>
-        </div>
-
-        <div id="mapping-area" style="display: none;">
-            <h2>Passo 2: Mapeamento dos Campos</h2>
-            <p>Indique qual coluna da sua planilha corresponde a cada campo da mensagem. <span style="font-weight: bold; color: var(--primary-green);">O mapeamento padrão foi aplicado.</span></p>
-            
-            <div class="campo-map">
-                <label for="coluna-numero">📞 Número (Col. 1)</label>
-                <select id="coluna-numero"></select>
-            </div>
-            <div class="campo-map">
-                <label for="coluna-nome">👤 Nome do Paciente</label>
-                <select id="coluna-nome"></select>
-            </div>
-            <div class="campo-map">
-                <label for="coluna-data">📅 Data da Consulta</label>
-                <select id="coluna-data"></select>
-            </div>
-            <div class="campo-map">
-                <label for="coluna-horario">🕒 Horário</label>
-                <select id="coluna-horario"></select>
-            </div>
-            <div class="campo-map">
-                <label for="coluna-medico">👨‍⚕️ Nome do Profissional</label>
-                <select id="coluna-medico"></select>
-            </div>
-            <div class="campo-map">
-                <label for="coluna-especialidade">🔬 Especialidade</label>
-                <select id="coluna-especialidade"></select>
-            </div>
-            
-            <p class="coluna-dica">Pré-visualização da Mensagem (usando a primeira linha de dados):</p>
-            <div id="template-preview"></div>
-        </div>
+        <a href="envio-assistido.html" class="home-btn">
+            Assistente de Envio Manual
+            <br><span style="font-size: 0.7em; opacity: 0.8;">(Importar lista e enviar um a um)</span>
+        </a>
         
-        <div id="result-area" style="display: none;">
-            <h2>Passo 3: Gerar Planilha</h2>
-            <button id="btn-gerar-planilha" disabled>Gerar Planilha de Envio (0 linhas)</button>
-            <p id="feedback-geracao" class="coluna-dica" style="margin-top: 15px;"></p>
-        </div>
-        
+        <a href="gerador-disparo.html" class="home-btn" style="background-color: #0d9488;">
+            Gerador de Planilha de Disparo
+            <br><span style="font-size: 0.7em; opacity: 0.8;">(Cria a lista de envio a partir de outra planilha)</span>
+        </a>
     </div>
 
-    <script>
-        // VARIÁVEIS GLOBAIS
-        let dadosOrigem = []; // Dados brutos lidos da planilha
-        let colunasDisponiveis = []; // Nomes das colunas (A, B, C...)
-        
-        // Elementos DOM
-        const fileInput = document.getElementById('file-input');
-        const feedbackImportacao = document.getElementById('feedback-importacao');
-        const mappingArea = document.getElementById('mapping-area');
-        const resultArea = document.getElementById('result-area');
-        const btnGerar = document.getElementById('btn-gerar-planilha');
-        const feedbackGeracao = document.getElementById('feedback-geracao');
-        const templatePreview = document.getElementById('template-preview');
-        
-        // Mapeamento de IDs para os seletores (mantém o controle)
-        const mapeamentoCampos = {
-            'coluna-numero': 'Número',
-            'coluna-nome': 'Nome do Paciente',
-            'coluna-data': 'Data',
-            'coluna-horario': 'Horário',
-            'coluna-medico': 'Profissional',
-            'coluna-especialidade': 'Especialidade'
-        };
-        
-        // Mapeamento Padrão de Colunas (Índice 0-based)
-        const DEFAULT_MAPPING = {
-            'coluna-numero': 20, // U
-            'coluna-nome': 10,   // K
-            'coluna-data': 3,    // D
-            'coluna-horario': 9, // J
-            'coluna-medico': 6,  // G
-            'coluna-especialidade': 28 // AC
-        };
-
-
-        // O TEMPLATE DA MENSAGEM (Com Formatação WhatsApp)
-        const TEMPLATE_MENSAGEM = `*CIS/UNINOVAFAPI – LEMBRETE DE AGENDAMENTO*
-
-*Nome:* [nome do paciente]
-*Data:* [data da consulta]
-*Horário:* [horario da consulta]
-*Profissional:* [nome do medico]
-*Especialidade:* [especialidade]
-
-""📌*OBRIGATORIO:*
-Apresente a *GUIA AUTORIZADA DO SUS (data, horário e carimbo)* mais *PEDIDO MÉDICO PREENCHIDO*
-Leve: *RG, CPF, comprovante de residência e cartão do SUS ( menor: certidão com CPF).*
-
-❗*SEM ESSES DOCUMENTOS, O ATENDIMENTO NÃO SERÁ REALIZADO.*❗
-
-*RESPONDA:*
-1️⃣ Confirmo presença
-2️⃣ Desejo cancelar
-
-⚠️*CHEGUE COM ANTECEDÊNCIA. ATRASOS PODEM IMPEDIR O ATENDIMENTO.*`;
-
-        // ----------------------------------------------------------------------
-        // FUNÇÕES DE UTILIDADE
-        // ----------------------------------------------------------------------
-
-        /**
-         * @description Cria o array de colunas disponíveis (A, B, C... AA, AB, AC).
-         * @param {number} maxCol - Número máximo de colunas usadas.
-         */
-        function gerarColunas(maxCol) {
-            const cols = [];
-            
-            // Limitando a um máximo de 29 colunas (A a AC) conforme solicitado.
-            const limite = Math.min(maxCol, 29); 
-            
-            for (let i = 0; i < limite; i++) {
-                let letra = '';
-                let temp = i;
-                
-                // Lógica de conversão de índice para nome de coluna (Excel style)
-                while (temp >= 0) {
-                    const resto = temp % 26;
-                    letra = String.fromCharCode(65 + resto) + letra;
-                    temp = Math.floor(temp / 26) - 1;
-                }
-                
-                // Exibe Letra (Índice + 1)
-                cols.push({ letra: letra, indice: i, nomeExibicao: `${letra} (Col. ${i + 1})` }); 
-            }
-            return cols;
-        }
-        
-        /**
-         * @description Preenche todos os <select>s com as colunas disponíveis.
-         */
-        function popularSelects() {
-            for (const id in mapeamentoCampos) {
-                const select = document.getElementById(id);
-                select.innerHTML = ''; // Limpa opções anteriores
-                
-                // Opção padrão (Obrigatório selecionar)
-                const defaultOption = document.createElement('option');
-                defaultOption.value = '';
-                defaultOption.textContent = `--- Selecione a Coluna para ${mapeamentoCampos[id]} ---`;
-                defaultOption.disabled = true;
-                defaultOption.selected = true;
-                select.appendChild(defaultOption);
-
-                colunasDisponiveis.forEach(col => {
-                    const option = document.createElement('option');
-                    option.value = col.indice;
-                    option.textContent = col.nomeExibicao;
-                    select.appendChild(option);
-                });
-            }
-        }
-        
-        /**
-         * @description Aplica o mapeamento padrão U, K, D, J, G, AC, se disponível.
-         */
-        function aplicarMapeamentoPadrao() {
-            for (const id in DEFAULT_MAPPING) {
-                const select = document.getElementById(id);
-                const desiredIndex = DEFAULT_MAPPING[id];
-
-                // Verifica se a coluna padrão existe na planilha antes de selecionar
-                if (desiredIndex < colunasDisponiveis.length) {
-                    select.value = desiredIndex.toString();
-                }
-            }
-        }
-
-
-        /**
-         * @description Formata o número de telefone (apenas dígitos), aplica o 9, remove 0 inicial e lida com números múltiplos.
-         * @param {string} numeroBruto - Número bruto, que pode conter '/'.
-         * @returns {Array<string>} Array de números formatados (somente 11 dígitos).
-         */
-        function formatarNumero(numeroBruto) {
-            if (!numeroBruto) return [];
-
-            // 1. Separa os números (pelo separador '/' ou vírgula)
-            const numeros = String(numeroBruto).split(/[/\,]/).map(n => n.trim());
-            const numerosFormatados = [];
-
-            numeros.forEach(num => {
-                if (!num) return;
-
-                // 2. Limpa: remove tudo que não é dígito
-                let limpo = num.replace(/\D/g, '');
-
-                // 3. Remove 0 inicial se o número tiver mais de 10 dígitos (para não afetar DDDs válidos)
-                if (limpo.startsWith('0') && limpo.length > 10) {
-                    limpo = limpo.substring(1);
-                }
-
-                // Deve ser 11 dígitos (DD + 9 + 8 dígitos) ou 10 dígitos (DD + 8 dígitos)
-                const tamanho = limpo.length;
-
-                if (tamanho === 11) {
-                    // Já está no formato completo esperado (DD9XXXXXXXX)
-                    numerosFormatados.push(limpo);
-
-                } else if (tamanho === 10) {
-                    // Está faltando o 9. Adiciona o 9 após o DDD (primeiros 2 dígitos)
-                    const ddd = limpo.substring(0, 2);
-                    const restante = limpo.substring(2);
-                    const comNonoDigito = ddd + '9' + restante;
-                    numerosFormatados.push(comNonoDigito);
-                }
-                // Números com outros tamanhos são ignorados (como 8 ou 9, que não têm DDD).
-            });
-
-            return numerosFormatados; // Pode retornar 0, 1, ou mais números
-        }
-
-        
-        /**
-         * @description Limpa o nome, removendo dados após o primeiro parêntese (.
-         * Ex: "NOME SOBRENOME (DATA DE NASCIMENTO)" -> "NOME SOBRENOME"
-         * @param {string} nomeCompleto - Nome bruto.
-         * @returns {string} Nome limpo.
-         */
-        function limparNome(nomeCompleto) {
-            // Garante que é uma string
-            nomeCompleto = String(nomeCompleto || '').trim();
-            const indexParenteses = nomeCompleto.indexOf('(');
-            
-            if (indexParenteses !== -1) {
-                // Pega tudo antes do '(' e remove espaços em branco extras
-                return nomeCompleto.substring(0, indexParenteses).trim();
-            }
-            return nomeCompleto; // Retorna o nome limpo se não tiver parênteses
-        }
-
-        // ----------------------------------------------------------------------
-        // FUNÇÕES DE LEITURA E PROCESSAMENTO
-        // ----------------------------------------------------------------------
-        
-        /**
-         * @description Converte o array de dados crus, gera o preview e prepara a interface.
-         * @param {Array<Object>} dados - Dados brutos lidos.
-         */
-        function processarDados(dados) {
-            feedbackImportacao.textContent = '';
-            
-            // Remove o cabeçalho (dados.slice(1)) e filtra linhas que são completamente vazias 
-            // (onde nenhuma célula tem conteúdo não-vazio).
-            dadosOrigem = dados.slice(1).filter(row => 
-                row.length > 0 && row.some(cell => String(cell || '').trim() !== '')
-            ); 
-            
-            if (dadosOrigem.length === 0) {
-                feedbackImportacao.textContent = 'Erro: Nenhuma linha de dados válida encontrada após o cabeçalho.';
-                mappingArea.style.display = 'none';
-                resultArea.style.display = 'none';
-                return;
-            }
-            
-            // Assume que o número de colunas é o tamanho do cabeçalho
-            const maxColunas = dados[0].length;
-            colunasDisponiveis = gerarColunas(maxColunas);
-            
-            popularSelects();
-            aplicarMapeamentoPadrao(); // <--- Aplica o mapeamento padrão
-            
-            // Exibe as áreas de mapeamento e resultado
-            mappingArea.style.display = 'block';
-            resultArea.style.display = 'block';
-            
-            // Atualiza a pré-visualização com os dados da primeira linha
-            verificarMapeamento(); // Chama para verificar e também atualizar o preview.
-            
-            btnGerar.disabled = true;
-            feedbackImportacao.textContent = `✅ ${dadosOrigem.length} linhas de dados e ${colunasDisponiveis.length} colunas disponíveis (${colunasDisponiveis[0].nomeExibicao} a ${colunasDisponiveis[colunasDisponiveis.length - 1].nomeExibicao}).`;
-        }
-        
-        // Funções lerCSV e lerXLSX (sem alterações)
-        function lerCSV(file) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const text = e.target.result;
-                const allRows = text.split('\n').filter(r => r.trim() !== '');
-                const dataArray = allRows.map(row => {
-                    // Expressão regular aprimorada para lidar com CSVs complexos, mantida a original para consistência
-                    const matches = row.match(/(".*?"|[^",]+)(?=\s*,\s*|\s*$)/g);
-                    return matches ? matches.map(m => m.replace(/(^"|"$)/g, '').trim()) : [];
-                });
-                processarDados(dataArray);
-            };
-            reader.readAsText(file);
-        }
-
-        function lerXLSX(file) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const data = new Uint8Array(e.target.result);
-                const workbook = XLSX.read(data, { type: 'array' });
-                const sheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[sheetName];
-                const dataArray = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-                processarDados(dataArray);
-            };
-            reader.readAsArrayBuffer(file);
-        }
-        
-        // ----------------------------------------------------------------------
-        // PRÉ-VISUALIZAÇÃO
-        // ----------------------------------------------------------------------
-        
-        /**
-         * @description Constrói e exibe o template preenchido com a primeira linha de dados.
-         */
-        function atualizarPreviewTemplate() {
-            // Se não há dados, mostra o template padrão
-            if (dadosOrigem.length === 0) {
-                templatePreview.textContent = TEMPLATE_MENSAGEM; 
-                return;
-            }
-            
-            // 1. Captura os índices das colunas selecionadas
-            const indices = {};
-            for (const id in mapeamentoCampos) {
-                const select = document.getElementById(id);
-                // Usa -1 se não estiver selecionado (value = "")
-                indices[id] = select.value !== '' ? parseInt(select.value) : -1; 
-            }
-
-            const linhaOrigem = dadosOrigem[0]; // Pega a primeira linha de dados
-
-            const campos = {};
-            
-            // Função auxiliar para obter o valor do campo
-            const getCampo = (key, defaultText) => {
-                const index = indices[key];
-                // CORREÇÃO: Usando linhaOrigem[index] corretamente
-                let valor = (index !== -1 && linhaOrigem[index] !== undefined && String(linhaOrigem[index]).trim() !== '') 
-                            ? String(linhaOrigem[index]) : `[${defaultText}]`;
-
-                if (key === 'coluna-nome' && !valor.startsWith('[')) {
-                    return limparNome(valor); // Aplica a limpeza do nome
-                }
-                return valor;
-            };
-            
-            const numeroBruto = getCampo('coluna-numero', 'número de telefone');
-            // Formata o número (para visualização, pega apenas o primeiro número se houver múltiplos)
-            const numerosFormatados = formatarNumero(numeroBruto);
-            const numeroPreview = numerosFormatados.length > 0 ? numerosFormatados[0] : `[Número Inválido/Não Mapeado]`;
-
-            // 2. Preenche os campos com os dados da primeira linha
-            campos['nome do paciente'] = getCampo('coluna-nome', 'nome do paciente');
-            campos['data da consulta'] = getCampo('coluna-data', 'data da consulta');
-            campos['horario da consulta'] = getCampo('coluna-horario', 'horario da consulta');
-            campos['nome do medico'] = getCampo('coluna-medico', 'nome do medico');
-            campos['especialidade'] = getCampo('coluna-especialidade', 'especialidade');
-            
-            // Adiciona a visualização do número formatado no topo do preview
-            let mensagemPrevia = `📞 *Número Formatado (Principal):* ${numeroPreview}\n---\n\n` + TEMPLATE_MENSAGEM;
-            
-            // 3. Substitui [placeholder] pelo valor na prévia
-            for (const placeholder in campos) {
-                const regex = new RegExp(`\\[${placeholder}\\]`, 'gi');
-                mensagemPrevia = mensagemPrevia.replace(regex, campos[placeholder]);
-            }
-            
-            templatePreview.textContent = mensagemPrevia;
-        }
-
-        // ----------------------------------------------------------------------
-        // LÓGICA DE GERAÇÃO
-        // ----------------------------------------------------------------------
-
-        /**
-         * @description Verifica se todos os campos obrigatórios estão mapeados.
-         */
-        function verificarMapeamento() {
-            let todosMapeados = true;
-            for (const id in mapeamentoCampos) {
-                const select = document.getElementById(id);
-                if (!select.value && select.value !== 0) { // Verifica se tem valor (o índice 0 é válido)
-                    todosMapeados = false;
-                    break;
-                }
-            }
-            
-            // Sempre atualiza a pré-visualização ao mudar o mapeamento
-            atualizarPreviewTemplate();
-            
-            btnGerar.disabled = !todosMapeados;
-            if (todosMapeados) {
-                 btnGerar.textContent = `Gerar Planilha de Envio (${dadosOrigem.length} linhas)`;
-                 feedbackGeracao.textContent = '';
-            } else {
-                 btnGerar.textContent = 'Preencha todos os campos obrigatórios';
-                 feedbackGeracao.textContent = 'Atenção: Todos os 6 campos devem ser mapeados para gerar o arquivo.';
-            }
-        }
-
-        /**
-         * @description Constrói a planilha final de duas colunas (Número, Mensagem).
-         */
-        function gerarPlanilhaFinal() {
-            if (btnGerar.disabled) return;
-            
-            feedbackGeracao.textContent = 'Processando...';
-            
-            // Captura os índices das colunas selecionadas
-            const indices = {};
-            for (const id in mapeamentoCampos) {
-                // O valor do select é o índice da coluna (0-based)
-                indices[id] = parseInt(document.getElementById(id).value); 
-            }
-
-            const dadosFinais = [['Numero', 'Mensagem']]; // Cabeçalho do novo arquivo
-            let linhasGeradas = 0;
-
-            dadosOrigem.forEach(linhaOrigem => {
-                // 1. Extrai e Formata o(s) Número(s)
-                const numeroBruto = linhaOrigem[indices['coluna-numero']];
-                const numerosFormatados = formatarNumero(numeroBruto); // Retorna um array de 0, 1 ou mais números
-
-                if (numerosFormatados.length === 0) {
-                    return; // Ignora linhas sem número válido
-                }
-
-                // 2. Extrai os outros campos e aplica a limpeza
-                const campos = {};
-                
-                // Aplica a regra de limpeza apenas na coluna de Nome
-                let nomeBruto = String(linhaOrigem[indices['coluna-nome']] || 'NÃO INFORMADO');
-                campos['nome do paciente'] = limparNome(nomeBruto);
-                
-                campos['data da consulta'] = linhaOrigem[indices['coluna-data']] || 'NÃO INFORMADA';
-                campos['horario da consulta'] = linhaOrigem[indices['coluna-horario']] || 'NÃO INFORMADO';
-                campos['nome do medico'] = linhaOrigem[indices['coluna-medico']] || 'NÃO INFORMADO';
-                campos['especialidade'] = linhaOrigem[indices['coluna-especialidade']] || 'NÃO INFORMADA';
-
-                // 3. Monta a Mensagem substituindo os placeholders no Template
-                let mensagemFinal = TEMPLATE_MENSAGEM;
-                
-                for (const placeholder in campos) {
-                    // Substitui [nome do paciente], [data da consulta], etc.
-                    const regex = new RegExp(`\\[${placeholder}\\]`, 'gi');
-                    mensagemFinal = mensagemFinal.replace(regex, campos[placeholder]);
-                }
-                
-                // 4. Adiciona cada número formatado como uma linha separada
-                numerosFormatados.forEach(num => {
-                    // Adiciona a nova linha: [Número Limpo (11 dígitos), Mensagem Completa]
-                    dadosFinais.push([num, mensagemFinal]);
-                    linhasGeradas++;
-                });
-            });
-            
-            // 5. Cria e Baixa o Arquivo XLSX
-            const ws = XLSX.utils.aoa_to_sheet(dadosFinais);
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, "Disparo_EMA_WA");
-            XLSX.writeFile(wb, "EMA-WA_Planilha_Disparo.xlsx");
-
-            feedbackGeracao.textContent = `✅ Arquivo "EMA-WA_Planilha_Disparo.xlsx" gerado com ${linhasGeradas} mensagens (${dadosOrigem.length} registros de origem)!`;
-        }
-        
-        // ----------------------------------------------------------------------
-        // LISTENERS
-        // ----------------------------------------------------------------------
-
-        // A. Listener de Upload de Arquivo
-        fileInput.addEventListener('change', (event) => {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            feedbackImportacao.textContent = 'Carregando... Por favor, aguarde.';
-            
-            if (file.name.endsWith('.csv')) {
-                lerCSV(file);
-            } else if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
-                lerXLSX(file);
-            } else {
-                feedbackImportacao.textContent = 'Erro: Formato não suportado. Use .csv, .xlsx ou .xls.';
-                fileInput.value = '';
-                mappingArea.style.display = 'none';
-                resultArea.style.display = 'none';
-            }
-        });
-
-        // B. Listener de Mudança nos Selects (Verifica Mapeamento e Atualiza Prévia)
-        mappingArea.addEventListener('change', (event) => {
-            // Só dispara se o elemento mudado for um <select>
-            if (event.target.tagName === 'SELECT') {
-                verificarMapeamento(); 
-            }
-        });
-        
-        // C. Listener do Botão Gerar
-        btnGerar.addEventListener('click', gerarPlanilhaFinal);
-
-        // D. Inicialização
-        document.addEventListener('DOMContentLoaded', () => {
-             // Oculta áreas no início
-             mappingArea.style.display = 'none';
-             resultArea.style.display = 'none';
-             
-             // Define o template inicial na pré-visualização
-             templatePreview.textContent = TEMPLATE_MENSAGEM;
-        });
-    </script>
 </body>
 </html>
