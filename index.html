@@ -6,6 +6,13 @@
     <title>EMA-WA: Assistente de Envio Manual</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#075E54">
+    <link rel="icon" type="image/png" href="icon-192x192.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <link rel="apple-touch-icon" href="icon-192x192.png">
+    
     <style>
         /* CSS Minimalista (Inspirado no WhatsApp Web) */
         :root {
@@ -43,11 +50,23 @@
             margin-bottom: 20px;
         }
 
-        input[type="file"] {
+        input[type="file"], select {
             display: block;
             margin-top: 10px;
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            width: 100%;
+            box-sizing: border-box;
         }
-
+        
+        #select-colunas {
+            margin-bottom: 15px;
+            padding: 10px;
+            background-color: #f7f7f7;
+            border-left: 5px solid var(--primary-green);
+        }
+        
         /* Botão Principal de Ação */
         #btn-enviar-proxima {
             background-color: var(--primary-green);
@@ -143,11 +162,21 @@
 <body>
 
     <div class="container">
-        <h1>⭐ EMA-WA | Assistente de Envio</h1>
+        <h1>EMA-WA | Assistente de Envio</h1>
         
         <div id="import-area">
-            <h2>🟦 1. Importar Planilha (CSV ou XLSX)</h2>
-            <p>Selecione um arquivo.</p>
+            <h2>Importar Planilha (CSV ou XLSX)</h2>
+            
+            <div id="select-colunas">
+                <label for="coluna-modo">Configuração de Colunas:</label>
+                <select id="coluna-modo">
+                    <option value="2">Modo 2 Colunas: NÚMERO (Col. 1) e MENSAGEM (Col. 2)</option>
+                    <option value="3">Modo 3 Colunas: NÚMERO (Col. 1) e MENSAGEM (Col. 3)</option>
+                </select>
+                <p style="font-size: 0.85em; color: var(--text-gray); margin-top: 5px;">A primeira coluna (Col. 1) é sempre o Número.</p>
+            </div>
+
+            <p>Selecione o arquivo e clique em "Carregar".</p>
             <input type="file" id="file-input" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel">
             <p id="feedback-importacao" style="color: red; margin-top: 10px;"></p>
         </div>
@@ -167,6 +196,9 @@
         const fileInput = document.getElementById('file-input');
         const feedbackImportacao = document.getElementById('feedback-importacao');
         const loadingMessage = document.getElementById('loading-message');
+        
+        // NOVO ELEMENTO: Seletor de modo de coluna
+        const colunaModoSelect = document.getElementById('coluna-modo');
 
         // ----------------------------------------------------------------------
         // FUNÇÕES DE LEITURA DE ARQUIVOS (CSV e XLSX)
@@ -184,35 +216,55 @@
                 feedbackImportacao.textContent = 'Erro: O arquivo está vazio.';
                 filaContainer.innerHTML = '';
                 btnEnviarProxima.disabled = true;
-                fileInput.value = ''; // CORREÇÃO: Reseta o input para permitir o re-upload do mesmo arquivo
+                fileInput.value = '';
                 return;
             }
             
-            // Se deve ignorar o cabeçalho, remove o primeiro elemento
+            // Determina qual índice de coluna será usado para a mensagem (0-based)
+            const modo = parseInt(colunaModoSelect.value);
+            let indiceMensagem;
+            let modoDescricao;
+
+            if (modo === 2) {
+                // Modo 2 Colunas: Número (0), Mensagem (1)
+                indiceMensagem = 1;
+                modoDescricao = 'Modo 2 Colunas (Col. 1 e Col. 2)';
+            } else if (modo === 3) {
+                // Modo 3 Colunas: Número (0), Mensagem (2)
+                indiceMensagem = 2;
+                modoDescricao = 'Modo 3 Colunas (Col. 1 e Col. 3)';
+            } else {
+                // Fallback ou erro
+                feedbackImportacao.textContent = 'Erro: Modo de coluna inválido selecionado.';
+                fileInput.value = '';
+                return;
+            }
+
+            // A primeira linha (cabeçalho) é sempre ignorada
             const dadosReais = ignorarPrimeiraLinha ? dados.slice(1) : dados;
 
-            // Mapeia os dados, assumindo a posição: Índice 0 = Número, Índice 1 = Mensagem
+            // Mapeia os dados: Índice 0 = Número, Índice dinâmico = Mensagem
             filaMensagens = dadosReais
-                // Filtra para garantir que as duas primeiras colunas não estejam vazias
-                .filter(row => row[0] && row[1]) 
+                // Filtra para garantir que as colunas necessárias não estejam vazias
+                .filter(row => row[0] && row[indiceMensagem]) 
                 .map((row, index) => ({
                     id: index + 1,
                     // Limpa caracteres não numéricos do número (Índice 0)
                     numero: String(row[0]).replace(/\D/g, ''), 
-                    // Mensagem (Índice 1)
-                    mensagem: String(row[1]), 
+                    // Mensagem (Índice dinâmico: 1 ou 2)
+                    mensagem: String(row[indiceMensagem]), 
                     status: 'Pendente'
                 }));
 
             if (filaMensagens.length === 0) {
-                feedbackImportacao.textContent = 'Erro: Nenhuma linha válida (com número e mensagem nas colunas 1 e 2) encontrada.';
+                feedbackImportacao.textContent = `Erro (${modoDescricao}): Nenhuma linha válida encontrada. Verifique se as colunas 1 e ${indiceMensagem + 1} contêm dados.`;
                 filaContainer.innerHTML = '';
                 btnEnviarProxima.disabled = true;
-                fileInput.value = ''; // CORREÇÃO: Reseta o input
+                fileInput.value = '';
                 return;
             }
 
-            feedbackImportacao.textContent = `✅ ${filaMensagens.length} mensagens carregadas com sucesso!`;
+            feedbackImportacao.textContent = `✅ ${filaMensagens.length} mensagens carregadas com sucesso! (${modoDescricao})`;
             renderizarFila();
         }
 
@@ -224,18 +276,16 @@
             const reader = new FileReader();
             reader.onload = function(e) {
                 const text = e.target.result;
-                
                 const allRows = text.split('\n').filter(r => r.trim() !== '');
                 
-                // Conversão simples de CSV para Array de Arrays
                 const dataArray = allRows.map(row => {
-                    // Usa expressão regular para lidar com CSV que pode ter aspas
+                    // Expressão regular para lidar com CSV, incluindo aspas
                     const matches = row.match(/(".*?"|[^",]+)(?=\s*,\s*|\s*$)/g);
                     return matches ? matches.map(m => m.replace(/(^"|"$)/g, '').trim()) : [];
                 });
                 
-                processarDados(dataArray, true); // Ignora a primeira linha
-                fileInput.value = ''; // CORREÇÃO: Reseta o input após o processamento
+                processarDados(dataArray, true);
+                fileInput.value = ''; // Reseta o input
             };
             reader.readAsText(file);
         }
@@ -249,16 +299,14 @@
             reader.onload = function(e) {
                 const data = new Uint8Array(e.target.result);
                 const workbook = XLSX.read(data, { type: 'array' });
-                
-                // Assume que a primeira planilha é a que contém os dados
                 const sheetName = workbook.SheetNames[0];
                 const worksheet = workbook.Sheets[sheetName];
                 
                 // Converte a planilha para Array de Arrays (sem nomes de cabeçalho)
                 const dataArray = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
                 
-                processarDados(dataArray, true); // Ignora a primeira linha
-                fileInput.value = ''; // CORREÇÃO: Reseta o input após o processamento
+                processarDados(dataArray, true);
+                fileInput.value = ''; // Reseta o input
             };
             reader.readAsArrayBuffer(file);
         }
@@ -269,17 +317,16 @@
             if (!file) return;
 
             feedbackImportacao.textContent = 'Carregando... Por favor, aguarde.';
-            filaMensagens = []; // Limpa a fila anterior
-            filaContainer.innerHTML = ''; // Limpa a visualização anterior
+            filaMensagens = [];
+            filaContainer.innerHTML = '';
             
-            // Verifica o tipo do arquivo
             if (file.name.endsWith('.csv')) {
                 lerCSV(file);
             } else if (file.name.endsWith('.xlsx') || file.name.endsWith('.xls')) {
                 lerXLSX(file);
             } else {
                 feedbackImportacao.textContent = 'Erro: Formato de arquivo não suportado. Use .csv, .xlsx ou .xls.';
-                fileInput.value = ''; // CORREÇÃO: Reseta o input
+                fileInput.value = '';
             }
         });
 
@@ -297,13 +344,12 @@
                 item.status = 'Enviado';
                 renderizarFila();
                 
-                // Rolagem para o próximo item destacado
                 const proximoDestaque = document.querySelector('.cartao-mensagem.destaque');
                 if (proximoDestaque) {
                     proximoDestaque.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 } else {
                     btnEnviarProxima.textContent = "✅ Campanha Concluída";
-                    btnEnviarProxima.style.backgroundColor = '#1DA851'; // Cor de sucesso
+                    btnEnviarProxima.style.backgroundColor = '#1DA851';
                     alert('🎉 Fila de Envio Concluída! Você enviou todas as mensagens.');
                 }
             }
@@ -317,13 +363,9 @@
          */
         function enviarMensagem(id, numero, mensagem) {
             const mensagemEncoded = encodeURIComponent(mensagem);
-            
-            // Formato de link do WhatsApp: wa.me/CODIGOPAISNUMERO?text=MENSAGEM
             const url = `https://wa.me/${numero}?text=${mensagemEncoded}`;
             
             window.open(url, '_blank');
-            
-            // Marca como enviado após a ação do usuário no nosso sistema
             marcarComoEnviado(id);
         }
 
@@ -331,7 +373,6 @@
          * @description Renderiza a lista de cartões na interface.
          */
         function renderizarFila() {
-            // Identifica o próximo item Pendente
             const proximoItem = filaMensagens.find(item => item.status === 'Pendente');
             
             filaContainer.innerHTML = '';
@@ -340,7 +381,7 @@
             if (proximoItem) {
                 btnEnviarProxima.disabled = false;
                 btnEnviarProxima.textContent = `➡ Enviar Próxima Mensagem (ID: ${proximoItem.id})`;
-                btnEnviarProxima.style.backgroundColor = '#075E54'; // Cor ativa
+                btnEnviarProxima.style.backgroundColor = '#075E54';
                 btnEnviarProxima.onclick = () => enviarMensagem(
                     proximoItem.id, 
                     proximoItem.numero, 
@@ -349,13 +390,13 @@
             } else if (filaMensagens.length > 0) {
                 btnEnviarProxima.disabled = true;
                 btnEnviarProxima.textContent = "✅ Campanha Concluída";
-                btnEnviarProxima.style.backgroundColor = '#1DA851'; // Cor de sucesso
+                btnEnviarProxima.style.backgroundColor = '#1DA851';
             } else {
                 // Estado inicial
                 btnEnviarProxima.disabled = true;
                 btnEnviarProxima.textContent = "Carregue um arquivo para começar";
                 btnEnviarProxima.style.backgroundColor = 'var(--text-gray)';
-                loadingMessage.style.display = 'block'; // Mostra a mensagem inicial de novo
+                loadingMessage.style.display = 'block';
             }
 
             // Cria os cartões
@@ -370,7 +411,7 @@
                 const badgeClass = isEnviado ? 'enviado' : 'pendente';
                 const badgeText = isEnviado ? 'ENVIADO' : 'PENDENTE';
                 
-                const numeroFormatado = item.numero; // Exibe o número limpo
+                const numeroFormatado = item.numero;
 
                 // Conteúdo HTML do cartão
                 cartao.innerHTML = `
@@ -401,4 +442,3 @@
     </script>
 </body>
 </html>
-
