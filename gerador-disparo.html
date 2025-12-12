@@ -89,27 +89,7 @@
             border-radius: 4px;
         }
         
-        /* Checkbox CEO Styling */
-        .campo-opcional {
-            display: flex;
-            align-items: center;
-            justify-content: flex-end;
-            margin-bottom: 20px;
-            border-top: 1px dashed #eee;
-            padding-top: 10px;
-        }
-        .campo-opcional label {
-            font-weight: 600;
-            color: var(--primary-green);
-            margin-right: 10px;
-            font-size: 1em;
-            width: auto;
-        }
-        .campo-opcional input[type="checkbox"] {
-            width: 20px;
-            height: 20px;
-            accent-color: var(--primary-green);
-        }
+        /* Checkbox CEO Styling (Removido o elemento, mas mantendo o estilo genérico de .coluna-dica) */
         
         /* BOTÃO DE AÇÃO */
         #btn-gerar-planilha {
@@ -146,6 +126,16 @@
             margin-top: 15px;
             font-size: 0.9em;
         }
+        
+        .map-section-title {
+            font-weight: bold;
+            color: var(--primary-green);
+            margin-top: 15px;
+            margin-bottom: 5px;
+            padding-top: 10px;
+            border-top: 1px dashed #eee;
+        }
+        
     </style>
 </head>
 <body>
@@ -166,8 +156,9 @@
 
         <div id="mapping-area" style="display: none;">
             <h2>Passo 2: Mapeamento dos Campos</h2>
-            <p>Indique qual coluna da sua planilha corresponde a cada campo da mensagem. <span style="font-weight: bold; color: var(--primary-green);">O mapeamento padrão foi aplicado.</span></p>
+            <p>Indique qual coluna da sua planilha corresponde a cada campo. <span style="font-weight: bold; color: var(--primary-green);">O mapeamento padrão foi aplicado.</span></p>
             
+            <div class="map-section-title">Campos da Mensagem:</div>
             <div class="campo-map">
                 <label for="coluna-numero">📞 Número (Col. 1)</label>
                 <select id="coluna-numero"></select>
@@ -193,9 +184,15 @@
                 <select id="coluna-especialidade"></select>
             </div>
             
-            <div class="campo-opcional">
-                <label for="checkbox-ceo">CEO (Documentação Detalhada)</label>
-                <input type="checkbox" id="checkbox-ceo">
+            <div class="map-section-title">Campos Condicionais (Decidem a Mensagem):</div>
+            <p class="coluna-dica">Estes campos definem se a mensagem será Padrão (Guia e Pedido) ou Detalhada (CEO).</p>
+            <div class="campo-map">
+                <label for="coluna-procedimento">Código do Procedimento</label>
+                <select id="coluna-procedimento"></select>
+            </div>
+            <div class="campo-map">
+                <label for="coluna-cbo">Código CBO</label>
+                <select id="coluna-cbo"></select>
             </div>
 
             <p class="coluna-dica">Pré-visualização da Mensagem (usando a primeira linha de dados):</p>
@@ -223,33 +220,42 @@
         const btnGerar = document.getElementById('btn-gerar-planilha');
         const feedbackGeracao = document.getElementById('feedback-geracao');
         const templatePreview = document.getElementById('template-preview');
-        const checkboxCEO = document.getElementById('checkbox-ceo'); // NOVO ELEMENTO
         
         // Mapeamento de IDs para os seletores (mantém o controle)
+        // ATUALIZADO: Inclusão de colunas-procedimento e coluna-cbo
         const mapeamentoCampos = {
             'coluna-numero': 'Número',
             'coluna-nome': 'Nome do Paciente',
             'coluna-data': 'Data',
             'coluna-horario': 'Horário',
             'coluna-medico': 'Profissional',
-            'coluna-especialidade': 'Especialidade'
+            'coluna-especialidade': 'Especialidade',
+            'coluna-procedimento': 'Código do Procedimento', // NOVO
+            'coluna-cbo': 'Código CBO' // NOVO
         };
         
         // Mapeamento Padrão de Colunas (Índice 0-based)
+        // ATUALIZADO: Novo DEFAULT_MAPPING
         const DEFAULT_MAPPING = {
             'coluna-numero': 20, // U
             'coluna-nome': 10,   // K
             'coluna-data': 3,    // D
             'coluna-horario': 9, // J
             'coluna-medico': 6,  // G
-            'coluna-especialidade': 28 // AC
+            'coluna-especialidade': 28, // AC
+            'coluna-procedimento': 7, // H (NOVO)
+            'coluna-cbo': 29 // AD (NOVO)
         };
+        
+        // Constantes de Validação
+        const PROCEDIMENTO_PADRAO = '0301010072';
+        const CBO_PADRAO = '223710';
 
         // ----------------------------------------------------------------------
         // TEMPLATES DE MENSAGEM (Condicionais)
         // ----------------------------------------------------------------------
 
-        // TEMPLATE PADRÃO (Checkbox CEO NÃO marcado)
+        // TEMPLATE PADRÃO (Antiga mensagem NÃO CEO - Menos detalhada na documentação)
         const TEMPLATE_MENSAGEM_PADRAO = `*CIS/UNINOVAFAPI – LEMBRETE DE AGENDAMENTO*
 
 *Nome:* [nome do paciente]
@@ -273,7 +279,7 @@ Apresente a *GUIA AUTORIZADA DO SUS (data, horário e carimbo)* mais *PEDIDO MÉ
 
 *CHEGUE COM ANTECEDÊNCIA. ATRASOS PODEM IMPEDIR O ATENDIMENTO.*`;
 
-        // TEMPLATE CEO (Checkbox CEO MARCADO)
+        // TEMPLATE CEO (Antiga mensagem CEO - Mais detalhada na documentação)
         const TEMPLATE_MENSAGEM_CEO = `*CIS/UNINOVAFAPI – LEMBRETE DE AGENDAMENTO*
 
 *Nome:* [nome do paciente]
@@ -299,20 +305,37 @@ Apresente a *GUIA AUTORIZADA DO SUS (data, horário e carimbo)* mais *PEDIDO MÉ
 *CHEGUE COM ANTECEDÊNCIA. ATRASOS PODEM IMPEDIR O ATENDIMENTO.*`;
 
         /**
-         * @description Retorna o template de mensagem correto com base no estado do checkbox CEO.
-         * @returns {string} O template de mensagem.
+         * @description Seleciona o template de mensagem com base na lógica condicional de Procedimento/CBO.
+         * @param {string} codProcedimento Código do procedimento da linha.
+         * @param {string} codCBO Código CBO da linha.
+         * @returns {string} O template de mensagem (CEO ou PADRÃO).
          */
-        function getTemplateMensagem() {
-            return checkboxCEO.checked ? TEMPLATE_MENSAGEM_CEO : TEMPLATE_MENSAGEM_PADRAO;
+        function getTemplateMensagemCondicional(codProcedimento, codCBO) {
+            const proc = String(codProcedimento || '').trim();
+            const cbo = String(codCBO || '').trim();
+
+            // Condição 1: Se o código de procedimento for '0301010072' -> Mensagem PADRÃO (Antigo NÃO CEO)
+            if (proc === PROCEDIMENTO_PADRAO) {
+                return TEMPLATE_MENSAGEM_PADRAO;
+            }
+
+            // Condição 2: Se não for o código de procedimento PADRÃO E o CBO for '223710' -> Mensagem PADRÃO (Antigo NÃO CEO)
+            if (proc !== PROCEDIMENTO_PADRAO && cbo === CBO_PADRAO) {
+                return TEMPLATE_MENSAGEM_PADRAO;
+            }
+
+            // Default: Caso contrário (Se for a condição que antes ativaria o CEO) -> Mensagem CEO (Mais Detalhada)
+            return TEMPLATE_MENSAGEM_CEO;
         }
         
         // ----------------------------------------------------------------------
-        // FUNÇÕES DE UTILIDADE (Mantidas as originais)
+        // FUNÇÕES DE UTILIDADE (Mantidas as originais, com atualização para limite AD)
         // ----------------------------------------------------------------------
 
         function gerarColunas(maxCol) {
             const cols = [];
-            const limite = Math.min(maxCol, 29); 
+            // A coluna AD é a coluna 30 (índice 29). Limitando a, pelo menos, 30.
+            const limite = Math.max(maxCol, 30); 
             
             for (let i = 0; i < limite; i++) {
                 let letra = '';
@@ -355,6 +378,7 @@ Apresente a *GUIA AUTORIZADA DO SUS (data, horário e carimbo)* mais *PEDIDO MÉ
                 const select = document.getElementById(id);
                 const desiredIndex = DEFAULT_MAPPING[id];
 
+                // Certifica-se de que o índice padrão existe nas colunas disponíveis antes de aplicar
                 if (desiredIndex < colunasDisponiveis.length) {
                     select.value = desiredIndex.toString();
                 }
@@ -405,7 +429,7 @@ Apresente a *GUIA AUTORIZADA DO SUS (data, horário e carimbo)* mais *PEDIDO MÉ
         }
 
         // ----------------------------------------------------------------------
-        // FUNÇÕES DE LEITURA E PROCESSAMENTO (Mantidas as originais)
+        // FUNÇÕES DE LEITURA E PROCESSAMENTO
         // ----------------------------------------------------------------------
         
         function processarDados(dados) {
@@ -422,7 +446,8 @@ Apresente a *GUIA AUTORIZADA DO SUS (data, horário e carimbo)* mais *PEDIDO MÉ
                 return;
             }
             
-            const maxColunas = dados[0].length;
+            // Pega o número máximo de colunas da planilha (o maior entre o cabeçalho e as linhas)
+            const maxColunas = dados.reduce((max, row) => Math.max(max, row.length), 0);
             colunasDisponiveis = gerarColunas(maxColunas);
             
             popularSelects();
@@ -441,11 +466,17 @@ Apresente a *GUIA AUTORIZADA DO SUS (data, horário e carimbo)* mais *PEDIDO MÉ
             const reader = new FileReader();
             reader.onload = function(e) {
                 const text = e.target.result;
+                // Lógica de leitura de CSV...
                 const allRows = text.split('\n').filter(r => r.trim() !== '');
                 const dataArray = allRows.map(row => {
-                    const matches = row.match(/(".*?"|[^",]+)(?=\s*,\s*|\s*$)/g);
+                    // Tenta detectar o separador (vírgula ou ponto e vírgula)
+                    const separator = row.includes(';') && !row.includes('"') ? ';' : ','; 
+                    
+                    // Usa a lógica de regex original, que lida melhor com strings entre aspas, mas adapta para o separador detectado
+                    const matches = row.match(new RegExp(`(".*?"|[^"${separator}]+)(?=\\s*${separator}\\s*|\\s*$)`, 'g'));
                     return matches ? matches.map(m => m.replace(/(^"|"$)/g, '').trim()) : [];
                 });
+                
                 processarDados(dataArray);
             };
             reader.readAsText(file);
@@ -465,14 +496,13 @@ Apresente a *GUIA AUTORIZADA DO SUS (data, horário e carimbo)* mais *PEDIDO MÉ
         }
         
         // ----------------------------------------------------------------------
-        // PRÉ-VISUALIZAÇÃO (Atualizada para usar o template condicional)
+        // PRÉ-VISUALIZAÇÃO (Atualizada para usar a lógica condicional)
         // ----------------------------------------------------------------------
         
         function atualizarPreviewTemplate() {
-            const mensagemBase = getTemplateMensagem(); // Pega o template correto
-            
             if (dadosOrigem.length === 0) {
-                templatePreview.textContent = mensagemBase; 
+                // Se não houver dados, exibe o template de mensagem CEO por padrão para mostrar o mais detalhado
+                templatePreview.textContent = TEMPLATE_MENSAGEM_CEO; 
                 return;
             }
             
@@ -484,31 +514,46 @@ Apresente a *GUIA AUTORIZADA DO SUS (data, horário e carimbo)* mais *PEDIDO MÉ
 
             const linhaOrigem = dadosOrigem[0]; 
 
-            const campos = {};
-            
             const getCampo = (key, defaultText) => {
                 const index = indices[key];
                 let valor = (index !== -1 && linhaOrigem[index] !== undefined && String(linhaOrigem[index]).trim() !== '') 
-                            ? String(linhaOrigem[index]) : `[${defaultText}]`;
+                             ? String(linhaOrigem[index]) : `[${defaultText}]`;
 
                 if (key === 'coluna-nome' && !valor.startsWith('[')) {
                     return limparNome(valor);
                 }
                 return valor;
             };
+
+            // Campos necessários para a lógica condicional
+            const codProcedimentoPreview = getCampo('coluna-procedimento', 'código do procedimento');
+            const codCBOPreview = getCampo('coluna-cbo', 'código CBO');
             
+            // Seleciona o template com base na lógica (usando os valores da primeira linha)
+            const mensagemBase = getTemplateMensagemCondicional(codProcedimentoPreview, codCBOPreview); 
+            
+            // Campos necessários para o preenchimento da mensagem
             const numeroBruto = getCampo('coluna-numero', 'número de telefone');
             const numerosFormatados = formatarNumero(numeroBruto);
             const numeroPreview = numerosFormatados.length > 0 ? numerosFormatados[0] : `[Número Inválido/Não Mapeado]`;
-            const nomePreview = getCampo('coluna-nome', 'nome do paciente'); // Adicionado o nome para a prévia
+            const nomePreview = getCampo('coluna-nome', 'nome do paciente'); 
 
+            const campos = {};
             campos['nome do paciente'] = nomePreview;
             campos['data da consulta'] = getCampo('coluna-data', 'data da consulta');
             campos['horario da consulta'] = getCampo('coluna-horario', 'horario da consulta');
             campos['nome do medico'] = getCampo('coluna-medico', 'nome do medico');
             campos['especialidade'] = getCampo('coluna-especialidade', 'especialidade');
             
-            let mensagemPrevia = `📞 *Número Formatado (Principal):* ${numeroPreview}\n👤 *Nome:* ${nomePreview}\n---\n\n` + mensagemBase; // Atualizado para incluir o nome
+            let mensagemPrevia = `--- LÓGICA ATUAL ---\n` +
+                                 `Procedimento: ${codProcedimentoPreview}\n` +
+                                 `CBO: ${codCBOPreview}\n` +
+                                 `Template Selecionado: ${mensagemBase === TEMPLATE_MENSAGEM_CEO ? 'CEO (Detalhado)' : 'Padrão (Simplificado)'}\n` +
+                                 `-------------------\n\n` +
+                                 `📞 *Número Formatado (Principal):* ${numeroPreview}\n` +
+                                 `👤 *Nome:* ${nomePreview}\n` +
+                                 `---\n\n` + 
+                                 mensagemBase; 
             
             for (const placeholder in campos) {
                 const regex = new RegExp(`\\[${placeholder}\\]`, 'gi');
@@ -519,29 +564,31 @@ Apresente a *GUIA AUTORIZADA DO SUS (data, horário e carimbo)* mais *PEDIDO MÉ
         }
 
         // ----------------------------------------------------------------------
-        // LÓGICA DE GERAÇÃO (Atualizada para incluir Nome e template condicional)
+        // LÓGICA DE GERAÇÃO (Atualizada para usar a lógica condicional)
         // ----------------------------------------------------------------------
 
         function verificarMapeamento() {
             let todosMapeados = true;
+            // Verifica todos os campos, incluindo os novos condicionais
             for (const id in mapeamentoCampos) {
                 const select = document.getElementById(id);
-                if (!select.value && select.value !== 0) { 
+                // O valor 0 (índice da coluna A) é um valor válido, por isso a verificação é `select.value === ''`
+                if (select.value === '') { 
                     todosMapeados = false;
                     break;
                 }
             }
             
-            // Também atualiza o preview quando o checkbox muda.
             atualizarPreviewTemplate(); 
             
             btnGerar.disabled = !todosMapeados;
+            const totalCampos = Object.keys(mapeamentoCampos).length;
             if (todosMapeados) {
                  btnGerar.textContent = `Gerar Planilha de Envio (${dadosOrigem.length} linhas)`;
                  feedbackGeracao.textContent = '';
             } else {
                  btnGerar.textContent = 'Preencha todos os campos obrigatórios';
-                 feedbackGeracao.textContent = 'Atenção: Todos os 6 campos devem ser mapeados para gerar o arquivo.';
+                 feedbackGeracao.textContent = `Atenção: Todos os ${totalCampos} campos devem ser mapeados para gerar o arquivo.`;
             }
         }
 
@@ -550,8 +597,6 @@ Apresente a *GUIA AUTORIZADA DO SUS (data, horário e carimbo)* mais *PEDIDO MÉ
             
             feedbackGeracao.textContent = 'Processando...';
             
-            const templateMensagem = getTemplateMensagem(); // Pega o template correto para a geração.
-
             const indices = {};
             for (const id in mapeamentoCampos) {
                 indices[id] = parseInt(document.getElementById(id).value); 
@@ -567,10 +612,17 @@ Apresente a *GUIA AUTORIZADA DO SUS (data, horário e carimbo)* mais *PEDIDO MÉ
                 const numerosFormatados = formatarNumero(numeroBruto); 
 
                 if (numerosFormatados.length === 0) {
-                    return; 
+                    return; // Pula a linha se não houver número válido
                 }
 
-                // 2. Extrai os outros campos e aplica a limpeza
+                // 2. Extrai campos para a lógica condicional
+                const codProcedimento = String(linhaOrigem[indices['coluna-procedimento']] || '');
+                const codCBO = String(linhaOrigem[indices['coluna-cbo']] || '');
+                
+                // 3. Seleciona o template CONDICIONALMENTE
+                const templateMensagem = getTemplateMensagemCondicional(codProcedimento, codCBO); 
+
+                // 4. Extrai os outros campos e aplica a limpeza
                 const campos = {};
                 
                 let nomeBruto = String(linhaOrigem[indices['coluna-nome']] || 'NÃO INFORMADO');
@@ -582,7 +634,7 @@ Apresente a *GUIA AUTORIZADA DO SUS (data, horário e carimbo)* mais *PEDIDO MÉ
                 campos['nome do medico'] = linhaOrigem[indices['coluna-medico']] || 'NÃO INFORMADO';
                 campos['especialidade'] = linhaOrigem[indices['coluna-especialidade']] || 'NÃO INFORMADA';
 
-                // 3. Monta a Mensagem usando o template CONDICIONAL
+                // 5. Monta a Mensagem usando o template selecionado
                 let mensagemFinal = templateMensagem;
                 
                 for (const placeholder in campos) {
@@ -590,7 +642,7 @@ Apresente a *GUIA AUTORIZADA DO SUS (data, horário e carimbo)* mais *PEDIDO MÉ
                     mensagemFinal = mensagemFinal.replace(regex, campos[placeholder]);
                 }
                 
-                // 4. Adiciona cada número formatado como uma linha separada
+                // 6. Adiciona cada número formatado como uma linha separada
                 numerosFormatados.forEach(num => {
                     // ATUALIZADO: Inclui o nome na segunda coluna
                     dadosFinais.push([num, nomeLimpo, mensagemFinal]); 
@@ -598,7 +650,7 @@ Apresente a *GUIA AUTORIZADA DO SUS (data, horário e carimbo)* mais *PEDIDO MÉ
                 });
             });
             
-            // 5. Cria e Baixa o Arquivo XLSX
+            // 7. Cria e Baixa o Arquivo XLSX
             const ws = XLSX.utils.aoa_to_sheet(dadosFinais);
             const wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Disparo_EMA_WA");
@@ -608,7 +660,7 @@ Apresente a *GUIA AUTORIZADA DO SUS (data, horário e carimbo)* mais *PEDIDO MÉ
         }
         
         // ----------------------------------------------------------------------
-        // LISTENERS (Adicionado listener para o checkbox CEO)
+        // LISTENERS (Removido o listener do checkbox CEO)
         // ----------------------------------------------------------------------
 
         // A. Listener de Upload de Arquivo
@@ -630,10 +682,10 @@ Apresente a *GUIA AUTORIZADA DO SUS (data, horário e carimbo)* mais *PEDIDO MÉ
             }
         });
 
-        // B. Listener de Mudança nos Selects E no Checkbox (Verifica Mapeamento e Atualiza Prévia)
+        // B. Listener de Mudança nos Selects (Verifica Mapeamento e Atualiza Prévia)
         mappingArea.addEventListener('change', (event) => {
-            // Se o elemento mudado for um <select> OU o checkbox CEO
-            if (event.target.tagName === 'SELECT' || event.target.id === 'checkbox-ceo') { 
+            // Verifica se o elemento mudado é um <select>
+            if (event.target.tagName === 'SELECT') { 
                 verificarMapeamento(); 
             }
         });
@@ -646,8 +698,8 @@ Apresente a *GUIA AUTORIZADA DO SUS (data, horário e carimbo)* mais *PEDIDO MÉ
              mappingArea.style.display = 'none';
              resultArea.style.display = 'none';
              
-             // Define o template inicial na pré-visualização (usa o getTemplateMensagem para pegar o padrão/CEO)
-             templatePreview.textContent = getTemplateMensagem(); 
+             // Define o template inicial na pré-visualização (usa o template CEO por ser o mais detalhado inicialmente)
+             templatePreview.textContent = TEMPLATE_MENSAGEM_CEO; 
         });
     </script>
 </body>
